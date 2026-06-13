@@ -1,0 +1,6 @@
+{
+  "name": "AeroTrackTiming",
+  "description": "Offline-Desktop-Zeitmessung für UHF RFID mit Tag-Zuweisung, Anmeldung, Zeitfahren, Massenstart, Ziel und Live-Rangliste.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

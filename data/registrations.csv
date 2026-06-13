@@ -1,0 +1,8 @@
+vorname,name,geburtsdatum,startnummer,wohnort,gender,club
+Johannes,Weber,1985-04-12,101,Bern,M,true
+Sarah,Müller,1992-08-23,102,Basel,W,false
+Thomas,Keller,1988-11-02,103,Zürich,M,true
+Elena,Baumann,1995-02-15,104,Luzern,W,true
+Peter,Schmid,1979-07-30,105,Winterthur,M,false
+Anna,Huber,2001-05-14,106,St. Gallen,W,false
+Lukas,Frei,1990-10-08,107,Chur,M,true
