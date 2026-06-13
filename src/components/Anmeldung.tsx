@@ -55,10 +55,18 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
   };
 
   const handleDownloadCSV = () => {
-    const csvContent = "vorname,name,geburtsdatum,startnummer,wohnort,gender,club\n" + 
-      registrations.map(r => `${r.vorname},${r.name},${r.geburtsdatum},${r.startnummer},${r.wohnort},${r.gender},${r.club}`).join("\n");
+    const escapeCSVField = (val: any): string => {
+      const str = val === undefined || val === null ? "" : String(val);
+      if (str.includes(";") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvContent = "vorname;name;geburtsdatum;startnummer;wohnort;gender;club\r\n" + 
+      registrations.map(r => `${escapeCSVField(r.vorname)};${escapeCSVField(r.name)};${escapeCSVField(r.geburtsdatum)};${escapeCSVField(r.startnummer)};${escapeCSVField(r.wohnort)};${escapeCSVField(r.gender)};${escapeCSVField(r.club)}`).join("\r\n");
     
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('href', url);
@@ -69,10 +77,10 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
   const filtered = registrations.filter(r => {
     const s = search.toLowerCase();
     return (
-      r.vorname.toLowerCase().includes(s) ||
-      r.name.toLowerCase().includes(s) ||
-      r.startnummer.toLowerCase().includes(s) ||
-      r.wohnort.toLowerCase().includes(s)
+      (r.vorname || '').toLowerCase().includes(s) ||
+      (r.name || '').toLowerCase().includes(s) ||
+      (r.startnummer || '').toLowerCase().includes(s) ||
+      (r.wohnort || '').toLowerCase().includes(s)
     );
   });
 

@@ -1,7 +1,9 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const { spawn } = require('child_process');
 
 const isProd = app.isPackaged || process.env.NODE_ENV === 'production';
+let serverProcess = null;
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -20,9 +22,7 @@ function createWindow() {
 
   mainWindow.loadURL('http://localhost:3000');
   
-  if (!isProd) {
-    mainWindow.webContents.openDevTools();
-  }
+  // mainWindow.webContents.openDevTools();
 }
 
 // Ensure single instance lock
@@ -53,7 +53,18 @@ if (!gotTheLock) {
       // Delay window creation slightly to ensure Express is listening
       setTimeout(createWindow, 500);
     } else {
-      createWindow();
+      console.log("Starting development server...");
+      serverProcess = spawn('npx', ['tsx', 'server.ts'], {
+        stdio: 'inherit',
+        shell: true
+      });
+
+      serverProcess.on('error', (err) => {
+        console.error('Failed to start development server:', err);
+      });
+
+      // Give the Vite server 2 seconds to spin up, then create the window
+      setTimeout(createWindow, 2000);
     }
 
     app.on('activate', () => {
@@ -69,3 +80,23 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+function cleanup() {
+  if (serverProcess) {
+    console.log("Stopping development server...");
+    if (process.platform === 'win32') {
+      const { exec } = require('child_process');
+      exec(`taskkill /pid ${serverProcess.pid} /T /F`, (err) => {
+        if (err) {
+          // Ignore errors if the process was already dead
+        }
+      });
+    } else {
+      serverProcess.kill('SIGTERM');
+    }
+    serverProcess = null;
+  }
+}
+
+app.on('will-quit', cleanup);
+process.on('exit', cleanup);

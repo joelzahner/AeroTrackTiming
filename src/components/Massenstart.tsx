@@ -76,27 +76,25 @@ export default function Massenstart({
 
     setIsStartingSim(true);
 
-    // Simulate backend logging trigger delay
-    setTimeout(() => {
-      const now = new Date();
-      const hrs = String(now.getHours()).padStart(2, '0');
-      const mins = String(now.getMinutes()).padStart(2, '0');
-      const secs = String(now.getSeconds()).padStart(2, '0');
-      const hundredths = String(Math.floor(now.getMilliseconds() / 10)).padStart(2, '0');
-      const stamp = `${hrs}:${mins}:${secs}.${hundredths}`;
+    const now = new Date();
+    const hrs = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
+    const secs = String(now.getSeconds()).padStart(2, '0');
+    const hundredths = String(Math.floor(now.getMilliseconds() / 10)).padStart(2, '0');
+    const stamp = `${hrs}:${mins}:${secs}.${hundredths}`;
 
-      // Call bulk trigger callback
-      onAddRaceEventsBulk(stagedBibs, 'START');
+    const count = stagedBibs.length;
 
-      setLastTriggerInfo({
-        time: stamp,
-        count: stagedBibs.length
-      });
+    // Call bulk trigger callback immediately
+    onAddRaceEventsBulk(stagedBibs, 'START');
 
-      setStagedBibs([]);
-      setIsStartingSim(false);
-      alert(`${stagedBibs.length} Fahrer wurden erfolgreich synchron um ${stamp} gestartet.`);
-    }, 800);
+    setLastTriggerInfo({
+      time: stamp,
+      count: count
+    });
+
+    setStagedBibs([]);
+    setIsStartingSim(false);
   };
 
   const handleSelectRace = (selected: string) => {
@@ -191,8 +189,8 @@ export default function Massenstart({
           </p>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-[#f3f3f3] border border-[#cfc4c5] rounded">
-          <span className="material-symbols-outlined text-green-500 text-sm animate-pulse-dot">wifi</span>
-          <span className="font-mono text-[10px] text-black">UHF Reader Online</span>
+          <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>
+          <span className="font-mono text-[10px] text-black">CSV Bereit</span>
         </div>
       </div>
 

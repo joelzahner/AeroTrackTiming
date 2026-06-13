@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Registration, TagAssignment, RaceEvent, FinisherResult } from '../types';
+import { RfidStatus } from '../App';
 
 interface ZielProps {
   races: string[];
@@ -11,6 +12,7 @@ interface ZielProps {
   onAddRaceEvent: (bib: string, typ: 'START' | 'ZIEL') => void;
   raceEvents: RaceEvent[];
   onRefresh: () => void;
+  rfidStatus: RfidStatus;
 }
 
 export default function Ziel({
@@ -22,7 +24,8 @@ export default function Ziel({
   onRaceCreate,
   onAddRaceEvent,
   raceEvents,
-  onRefresh
+  onRefresh,
+  rfidStatus
 }: ZielProps) {
   const [raceInput, setRaceInput] = useState('');
   const [isRaceConfirmed, setIsRaceConfirmed] = useState(false);
@@ -32,10 +35,13 @@ export default function Ziel({
   // Animated visual RFID bars state
   const [barHeights, setBarHeights] = useState<number[]>([]);
 
-  // Simulation: List tags that can be crossed/triggered
+  // Track already-finished bibs to prevent duplicates on client side
+  const [finishedBibs, setFinishedBibs] = useState<Set<string>>(new Set());
+
+  // Simulation filter
   const [simFilter, setSimFilter] = useState('');
 
-  // Setup visual simulated bars on mount
+  // Setup visual bars on mount
   useEffect(() => {
     setBarHeights(Array.from({ length: 30 }, () => Math.floor(Math.random() * 80) + 20));
   }, []);
@@ -65,6 +71,81 @@ export default function Ziel({
     return () => cancelAnimationFrame(animFrameId);
   }, []);
 
+  // Track finished bibs from race events
+  useEffect(() => {
+    const finished = new Set<string>();
+    raceEvents.forEach(e => {
+      if (e.typ === 'ZIEL') {
+        finished.add(e.startnummer);
+      }
+    });
+    setFinishedBibs(finished);
+  }, [raceEvents]);
+
+  // Start/stop server-side RFID monitoring when race is confirmed and stream is active
+  useEffect(() => {
+    if (!isRaceConfirmed || !activeRace) return;
+
+    if (isLiveStreamActive) {
+      // Start monitoring on server
+      fetch('/api/rfid/start-monitoring', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raceName: activeRace }),
+      }).catch(() => {});
+    } else {
+      fetch('/api/rfid/stop-monitoring', { method: 'POST' }).catch(() => {});
+    }
+
+    return () => {
+      fetch('/api/rfid/stop-monitoring', { method: 'POST' }).catch(() => {});
+    };
+  }, [isRaceConfirmed, activeRace, isLiveStreamActive]);
+
+  // Poll for RFID scans and auto-create ZIEL events (client-side fallback for simulation mode)
+  useEffect(() => {
+    if (!isRaceConfirmed || !isLiveStreamActive || !activeRace) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/rfid/last-scan');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.found) return;
+
+        // Match EPC to startnummer via tagAssignments
+        const normalizedEpc = (data.epc || '').replace(/\s/g, '').toUpperCase();
+        const match = tagAssignments.find(t => {
+          const tagEpc = (t.epc || '').replace(/\s/g, '').toUpperCase();
+          return tagEpc === normalizedEpc;
+        });
+
+        if (match && !finishedBibs.has(match.startnummer)) {
+          // Only in simulation mode do we create events from the client;
+          // in reader mode the server auto-handles it via monitoring
+          if (rfidStatus.mode !== 'reader') {
+            onAddRaceEvent(match.startnummer, 'ZIEL');
+          }
+          // Refresh to pick up server-created events
+          onRefresh();
+        }
+      } catch (err) {
+        // Ignore polling errors
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [isRaceConfirmed, isLiveStreamActive, activeRace, tagAssignments, finishedBibs, rfidStatus.mode]);
+
+  // Also poll race events periodically to catch server-side auto-detections
+  useEffect(() => {
+    if (!isRaceConfirmed || !activeRace) return;
+    const interval = setInterval(() => {
+      onRefresh();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isRaceConfirmed, activeRace]);
+
   // Confirm Race Selection
   const handleSelectRace = (selected: string) => {
     setActiveRace(selected);
@@ -78,23 +159,23 @@ export default function Ziel({
     setIsRaceConfirmed(true);
   };
 
-  // Triggering simulated tag scan
+  // Manual tag crossing simulation
   const handleSimulateTagCrossing = (assignment: TagAssignment) => {
-    // Adds a ZIEL event to the active race CSV
+    if (finishedBibs.has(assignment.startnummer)) {
+      return; // Already finished, no duplicate
+    }
     onAddRaceEvent(assignment.startnummer, 'ZIEL');
   };
 
   // Process finisher standings
-  // We need to match START and ZIEL events for each bib to calculate total time, sorted by rank!
   const getProcessedStandings = (): FinisherResult[] => {
     const bibs = Array.from(new Set(raceEvents.map(e => e.startnummer)));
     const list: FinisherResult[] = [];
 
     bibs.forEach((bib) => {
-      // Find start and finish events for this bib
       const startEvt = raceEvents.filter(e => e.startnummer === bib && e.typ === 'START').sort((a,b) => Number(a.exactMs) - Number(b.exactMs))[0];
       const finishEvts = raceEvents.filter(e => e.startnummer === bib && e.typ === 'ZIEL').sort((a,b) => Number(a.exactMs) - Number(b.exactMs));
-      const finishEvt = finishEvts[finishEvts.length - 1]; // pick latest finish
+      const finishEvt = finishEvts[finishEvts.length - 1];
 
       const athlete = registrations.find(r => r.startnummer === bib);
       
@@ -102,7 +183,7 @@ export default function Ziel({
         startnummer: bib,
         name: athlete ? athlete.name : 'Gastschreiber',
         vorname: athlete ? athlete.vorname : `#${bib}`,
-        gender: athlete ? athlete.gender : 'M',
+        gender: athlete ? (athlete.gender as 'M' | 'W') : 'M',
         geburtsdatum: athlete ? athlete.geburtsdatum : '1990',
         wohnort: athlete ? athlete.wohnort : 'Extern',
         club: athlete ? athlete.club : false,
@@ -119,7 +200,6 @@ export default function Ziel({
         const delta = res.finishMs - res.startMs;
         res.elapsedMs = delta;
 
-        // format visual label
         const diffMs = delta % 1000;
         const totalSecs = Math.floor(delta / 1000);
         const secs = totalSecs % 60;
@@ -128,7 +208,7 @@ export default function Ziel({
         const hrs = Math.floor(totalMins / 60);
 
         const pad = (n: number) => String(n).padStart(2, '0');
-        const msPad = (n: number) => String(Math.floor(n / 10)).padStart(2, '0'); // hundredths format like screenshot
+        const msPad = (n: number) => String(Math.floor(n / 10)).padStart(2, '0');
 
         if (hrs > 0) {
           res.elapsedLabel = `${hrs}:${pad(mins)}:${pad(secs)}.${msPad(diffMs)}`;
@@ -140,11 +220,9 @@ export default function Ziel({
       list.push(res);
     });
 
-    // Sort by elapsedMs. Keep DNF (elapsedMs = Infinity) at the bottom
     const finishers = list.filter(item => item.elapsedMs !== Infinity).sort((a, b) => a.elapsedMs - b.elapsedMs);
     const dnfs = list.filter(item => item.elapsedMs === Infinity);
 
-    // Calculate relative differences to leader
     if (finishers.length > 0) {
       const leaderMs = finishers[0].elapsedMs;
       finishers.forEach((f, idx) => {
@@ -244,10 +322,10 @@ export default function Ziel({
     );
   }
 
-  // Filter tag assignments to simulate
+  // Filter tag assignments for simulation triggers
   const filteredTags = tagAssignments.filter(tag => {
     const term = simFilter.toLowerCase();
-    return tag.startnummer.includes(term) || tag.epc.toLowerCase().includes(term);
+    return (tag.startnummer || '').includes(term) || (tag.epc || '').toLowerCase().includes(term);
   });
 
   return (
@@ -266,25 +344,29 @@ export default function Ziel({
           </div>
           <div className="font-sans text-xs font-bold text-black border border-[#cfc4c5] p-2 bg-[#f9f9f9] rounded flex justify-between items-center">
             <span>📁 {activeRace}.csv</span>
-            <span className="text-[9px] font-mono text-green-600 font-bold animate-pulse">● READER ACTIVE</span>
+            <span className={`text-[9px] font-mono font-bold ${rfidStatus.connected ? 'text-green-600 animate-pulse' : 'text-[#585f6c]'}`}>
+              ● {rfidStatus.connected ? 'READER ACTIVE' : 'SIMULATION'}
+            </span>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-4">
           <div className="flex flex-col">
-            <span className="font-mono text-[10px] text-[#585f6c] mb-1 uppercase">READER TUNING</span>
+            <span className="font-mono text-[10px] text-[#585f6c] mb-1 uppercase">READER STATUS</span>
             <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-4 bg-green-500 rounded-sm"></div>
-              <div className="w-1.5 h-5 bg-green-500 rounded-sm"></div>
-              <div className="w-1.5 h-6 bg-green-500 rounded-sm"></div>
-              <div className="w-1.5 h-7 bg-green-500 rounded-sm"></div>
+              <div className={`w-1.5 h-4 rounded-sm ${rfidStatus.connected ? 'bg-green-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-1.5 h-5 rounded-sm ${rfidStatus.connected ? 'bg-green-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-1.5 h-6 rounded-sm ${rfidStatus.connected ? 'bg-green-500' : 'bg-gray-200'}`}></div>
+              <div className={`w-1.5 h-7 rounded-sm ${rfidStatus.connected ? 'bg-green-500' : 'bg-gray-200'}`}></div>
               <div className="w-1.5 h-8 bg-gray-200 rounded-sm"></div>
-              <span className="font-mono text-xs font-bold text-green-600 ml-1">-65 dBm</span>
+              <span className={`font-mono text-xs font-bold ml-1 ${rfidStatus.connected ? 'text-green-600' : 'text-[#585f6c]'}`}>
+                {rfidStatus.connected ? `${rfidStatus.comPort}` : 'Kein Reader'}
+              </span>
             </div>
           </div>
           <div className="flex flex-col border-l border-[#e2e2e2] pl-4">
-            <span className="font-mono text-[10px] text-[#585f6c] mb-1">READ SPEED</span>
-            <span className="font-mono text-xs font-bold text-black">142 epc/sec</span>
+            <span className="font-mono text-[10px] text-[#585f6c] mb-1">MODUS</span>
+            <span className="font-mono text-xs font-bold text-black">{rfidStatus.connected ? 'AUTO-DETECT' : 'MANUELL'}</span>
           </div>
           <div className="flex flex-col border-l border-[#e2e2e2] pl-4">
             <span className="font-mono text-[10px] text-[#585f6c] mb-1">GPS TIME INDEX</span>
@@ -299,11 +381,11 @@ export default function Ziel({
         {/* Left Side: Live feeds */}
         <div className="lg:col-span-8 flex flex-col gap-6 justify-between">
           
-          {/* Latest Finish visual layout matches image 5 exactly */}
+          {/* Latest Finish visual */}
           <div className="bg-[#f9f9f9] border border-[#cfc4c5] rounded p-6 relative overflow-hidden flex flex-col justify-between">
             <div className="absolute top-0 right-0 p-4">
               <span className="px-2 py-0.5 bg-neutral-200 text-[#585f6c] font-mono text-[10px] rounded border border-[#cfc4c5]">
-                {isLiveStreamActive ? 'LIVE ANTENNE ACTIVE' : 'STREAM STALE'}
+                {isLiveStreamActive ? 'LIVE ANTENNE ACTIVE' : 'STREAM PAUSED'}
               </span>
             </div>
             
@@ -320,7 +402,7 @@ export default function Ziel({
                 </span>
                 <span className="mx-4 w-px h-6 bg-[#cfc4c5]"></span>
                 <span id="latest-finish-name" className="font-sans text-lg font-bold text-black">
-                  {latestFinishAthlete ? `${latestFinishAthlete.vorname} ${latestFinishAthlete.name}` : 'Augeprüftes UHF-Band'}
+                  {latestFinishAthlete ? `${latestFinishAthlete.vorname} ${latestFinishAthlete.name}` : 'Warte auf Signal...'}
                 </span>
               </div>
             </div>
@@ -358,22 +440,21 @@ export default function Ziel({
                   <tr>
                     <th className="py-2 px-4 font-normal">TIMESTAMP</th>
                     <th className="py-2 px-4 font-normal">EPC ID (RFID CAPTURED)</th>
-                    <th className="py-2 px-4 font-normal">RSSI</th>
-                    <th className="py-2 px-4 font-normal text-right">ANT</th>
+                    <th className="py-2 px-4 font-normal">BIB</th>
+                    <th className="py-2 px-4 font-normal text-right">STATUS</th>
                   </tr>
                 </thead>
                 <tbody className="font-mono text-xs text-neutral-600">
                   {raceEvents.filter(e => e.typ === 'ZIEL').slice(-6).reverse().map((evt, idx) => {
-                    // find matching assignment to show epc
                     const match = tagAssignments.find(t => t.startnummer === evt.startnummer);
                     return (
                       <tr key={idx} className="border-b border-[#f3f3f3] hover:bg-[#fafafa]">
                         <td className="py-2 px-4 text-black font-bold">{evt.timestamp}</td>
                         <td className="py-2 px-4 select-all text-[#5c5c5c]">
-                          {match ? match.epc : `E280 1160 6000 020F 0B19 ${evt.startnummer.padStart(4, '0')}`}
+                          {match ? match.epc : `—`}
                         </td>
-                        <td className="py-2 px-4 text-green-600 font-bold">-{Math.floor(Math.random() * 20) + 45} dBm</td>
-                        <td className="py-2 px-4 text-right">A1</td>
+                        <td className="py-2 px-4 text-black font-bold">#{evt.startnummer}</td>
+                        <td className="py-2 px-4 text-right text-green-600 font-bold">✔ ZIEL</td>
                       </tr>
                     );
                   })}
@@ -390,7 +471,7 @@ export default function Ziel({
           </div>
         </div>
 
-        {/* Right Side Standings results matches image 5 perfectly */}
+        {/* Right Side Standings + Simulation trigger */}
         <div className="lg:col-span-4 bg-[#f9f9f9] border border-[#cfc4c5] rounded-lg flex flex-col justify-between overflow-hidden">
           <div className="p-4 border-b border-[#cfc4c5] bg-[#ffffff] flex justify-between items-center">
             <h2 className="font-mono text-xs text-[#585f6c] font-bold uppercase tracking-wider">Ergebnisliste (Live in .csv)</h2>
@@ -403,7 +484,7 @@ export default function Ziel({
           <div className="flex-grow overflow-y-auto custom-scrollbar bg-white p-2 flex flex-col gap-2 h-[340px]">
             {processedStandings.length === 0 ? (
               <div className="p-8 text-center text-gray-500 font-sans text-xs">
-                Keine Resultate registriert. Simulieren Sie eine Zielankunft durch Triggern eines Tags unten.
+                Keine Resultate registriert. {rfidStatus.connected ? 'Warte auf RFID-Signale...' : 'Triggern Sie einen Tag unten.'}
               </div>
             ) : (
               processedStandings.map((stand, i) => {
@@ -436,13 +517,15 @@ export default function Ziel({
             )}
           </div>
 
-          {/* Simulation Tool right inside the card footer */}
+          {/* Simulation/Manual Tool */}
           <div className="p-4 border-t border-[#cfc4c5] bg-[#f9f9f9]">
             <div className="mb-2">
-              <label className="block font-mono text-[10px] text-[#585f6c] font-bold uppercase mb-1">RFID UHF SIMULATOR ANTENNE</label>
+              <label className="block font-mono text-[10px] text-[#585f6c] font-bold uppercase mb-1">
+                {rfidStatus.connected ? 'MANUELLE ZIELERFASSUNG (FALLBACK)' : 'MANUELLE ZIELERFASSUNG'}
+              </label>
               <input
                 type="text"
-                placeholder="Sim-Fokus Filtern..."
+                placeholder="Startnummer filtern..."
                 value={simFilter}
                 onChange={(e) => setSimFilter(e.target.value)}
                 className="w-full p-1 bg-white border border-[#cfc4c5] rounded font-mono text-[10px] text-black outline-none"
@@ -450,23 +533,37 @@ export default function Ziel({
             </div>
             
             <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto custom-scrollbar border border-[#e2e2e2] bg-white p-1 rounded">
-              {filteredTags.map((tag) => (
-                <button
-                  key={tag.startnummer}
-                  type="button"
-                  onClick={() => handleSimulateTagCrossing(tag)}
-                  className="p-1 px-2 border border-[#cfc4c5] hover:bg-neutral-100 hover:border-black text-left rounded text-[9px] font-mono text-black transition-colors flex justify-between items-center cursor-pointer"
-                  title={`Simuliert das Vorbeifahren von Startnummer ${tag.startnummer} an der Zielantenne`}
-                >
-                  <span>Bib #{tag.startnummer}</span>
-                  <span className="text-[#5c5c5c] font-bold">Trigger 📡</span>
-                </button>
-              ))}
+              {filteredTags.map((tag) => {
+                const isAlreadyFinished = finishedBibs.has(tag.startnummer);
+                return (
+                  <button
+                    key={tag.startnummer}
+                    type="button"
+                    onClick={() => handleSimulateTagCrossing(tag)}
+                    disabled={isAlreadyFinished}
+                    className={`p-1 px-2 border rounded text-[9px] font-mono text-left transition-colors flex justify-between items-center ${
+                      isAlreadyFinished
+                        ? 'border-green-200 bg-green-50 text-green-600 cursor-default'
+                        : 'border-[#cfc4c5] hover:bg-neutral-100 hover:border-black text-black cursor-pointer'
+                    }`}
+                    title={isAlreadyFinished ? `Startnummer ${tag.startnummer} ist bereits im Ziel` : `Zielankunft für Startnummer ${tag.startnummer} manuell auslösen`}
+                  >
+                    <span>Bib #{tag.startnummer}</span>
+                    <span className="font-bold">
+                      {isAlreadyFinished ? '✔' : 'Trigger 📡'}
+                    </span>
+                  </button>
+                );
+              })}
               {filteredTags.length === 0 && (
                 <p className="col-span-2 text-center text-[9px] font-mono text-gray-500 p-2">Keine Tags zugewiesen.</p>
               )}
             </div>
-            <p className="text-[9px] text-[#7e7576] font-mono mt-2 text-center">Klicken Sie oben auf "Trigger" um den Sensor anzusprechen.</p>
+            <p className="text-[9px] text-[#7e7576] font-mono mt-2 text-center">
+              {rfidStatus.connected 
+                ? 'Reader aktiv: Tags werden automatisch erkannt. Manuelle Eingabe als Fallback.'
+                : 'Klicken Sie auf "Trigger" um eine Zielankunft manuell auszulösen.'}
+            </p>
           </div>
         </div>
 

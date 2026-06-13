@@ -1,8 +1,12 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { exec } from "child_process";
+import { exec, spawn, ChildProcess } from "child_process";
 import { createServer as createViteServer } from "vite";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3000;
@@ -72,6 +76,62 @@ function getRegistrationsFile(): string {
 }
 
 // Ensure base files and templates exist in the target directory
+function ensureBOMAndSep(filePath: string, defaultHeader: string) {
+  const defaultHeaderSemicolon = defaultHeader.replace(/,/g, ";");
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, "\ufeff" + defaultHeaderSemicolon + "\r\n", "utf8");
+    return;
+  }
+  try {
+    let content = fs.readFileSync(filePath, "utf8");
+    let changed = false;
+    
+    // Normalize line endings to CRLF for Excel/Windows compatibility
+    const normalizedContent = content.replace(/\r?\n/g, "\r\n");
+    if (normalizedContent !== content) {
+      content = normalizedContent;
+      changed = true;
+    }
+    
+    // If it has sep=, remove it because Excel ignores BOM when sep= is present
+    if (content.startsWith("\ufeffsep=") || content.startsWith("sep=")) {
+      let contentWithoutSep = content;
+      if (content.startsWith("\ufeff")) {
+        contentWithoutSep = content.slice(1);
+      }
+      const newlineIndex = contentWithoutSep.indexOf("\r\n");
+      if (newlineIndex !== -1) {
+        content = contentWithoutSep.slice(newlineIndex + 2);
+      } else {
+        const lfIndex = contentWithoutSep.indexOf("\n");
+        if (lfIndex !== -1) {
+          content = contentWithoutSep.slice(lfIndex + 1);
+        }
+      }
+      changed = true;
+    }
+
+    if (!content.startsWith("\ufeff")) {
+      content = "\ufeff" + content;
+      changed = true;
+    }
+    
+    // Convert commas to semicolons if they exist as delimiters in the header
+    const firstLine = content.slice(1).split("\r\n")[0];
+    if (firstLine.includes(",") && !firstLine.includes(";")) {
+      content = content.replace(/,/g, ";");
+      changed = true;
+    }
+    
+    if (changed) {
+      fs.writeFileSync(filePath, content, "utf8");
+      console.log(`Migrated ${filePath} to UTF-8 BOM, CRLF and semicolon delimiters`);
+    }
+  } catch (err) {
+    console.error(`Failed to migrate file ${filePath}:`, err);
+  }
+}
+
 function initializeStorage(dirPath: string) {
   const racesDir = path.join(dirPath, "races");
   if (!fs.existsSync(dirPath)) {
@@ -82,60 +142,23 @@ function initializeStorage(dirPath: string) {
   }
 
   const tagsFile = path.join(dirPath, "tags.csv");
-  if (!fs.existsSync(tagsFile)) {
-    fs.writeFileSync(tagsFile, "startnummer,epc,timestamp,status\n", "utf8");
-    // Seed some initial tags for beautiful layout out of the box
-    fs.appendFileSync(tagsFile, "104,E280 1160 6000 020B 1500 081C,14:32:01.442,Locked\n");
-    fs.appendFileSync(tagsFile, "103,E280 1160 6000 020B 1500 081A,14:30:12.891,Locked\n");
-    fs.appendFileSync(tagsFile, "102,E280 1160 6000 020B 1500 0819,14:28:45.102,Locked\n");
-    fs.appendFileSync(tagsFile, "101,E280 1160 6000 020B 1500 0815,14:25:33.001,Invalid\n");
-    fs.appendFileSync(tagsFile, "100,E280 1160 6000 020B 1500 0812,14:22:11.754,Locked\n");
-    fs.appendFileSync(tagsFile, "099,E280 1160 6000 020B 1500 0810,14:20:05.222,Locked\n");
-  }
+  ensureBOMAndSep(tagsFile, "startnummer,epc,timestamp,status");
 
   const registrationsFile = path.join(dirPath, "registrations.csv");
-  if (!fs.existsSync(registrationsFile)) {
-    fs.writeFileSync(registrationsFile, "vorname,name,geburtsdatum,startnummer,wohnort,gender,club\n", "utf8");
-    // Seed initial registrations matching images
-    fs.appendFileSync(registrationsFile, "Johannes,Weber,1985-04-12,101,Bern,M,true\n");
-    fs.appendFileSync(registrationsFile, "Sarah,Müller,1992-08-23,102,Basel,W,false\n");
-    fs.appendFileSync(registrationsFile, "Thomas,Keller,1988-11-02,103,Zürich,M,true\n");
-    fs.appendFileSync(registrationsFile, "Elena,Baumann,1995-02-15,104,Luzern,W,true\n");
-    fs.appendFileSync(registrationsFile, "Peter,Schmid,1979-07-30,105,Winterthur,M,false\n");
-    fs.appendFileSync(registrationsFile, "Anna,Huber,2001-05-14,106,St. Gallen,W,false\n");
-    fs.appendFileSync(registrationsFile, "Lukas,Frei,1990-10-08,107,Chur,M,true\n");
-  }
+  ensureBOMAndSep(registrationsFile, "vorname,name,geburtsdatum,startnummer,wohnort,gender,club");
 
-  // Seed mock races if no files exist
-  const defaultRaces = ["Ötztaler Radmarathon 2024 - Stage 1", "Zürcher Kantonalmeisterschaft_2023", "Alpen_Tour_Etappe_4"];
-  defaultRaces.forEach((r) => {
-    const file = path.join(racesDir, `${r}.csv`);
-    if (!fs.existsSync(file)) {
-      fs.writeFileSync(file, "startnummer,typ,timestamp,exactMs\n", "utf8");
-      // Seed some starts and finishes for demonstration
-      if (r === "Ötztaler Radmarathon 2024 - Stage 1") {
-        fs.appendFileSync(file, "104,START,05:44:00.00,178124064000\n");
-        fs.appendFileSync(file, "104,ZIEL,05:56:45.12,178124829120\n");
-        fs.appendFileSync(file, "088,START,05:44:05.00,178124069000\n");
-        fs.appendFileSync(file, "088,ZIEL,05:56:53.95,178124837950\n");
-        fs.appendFileSync(file, "112,START,05:44:10.00,178124074000\n");
-        fs.appendFileSync(file, "112,ZIEL,05:57:11.22,178124855220\n");
-        fs.appendFileSync(file, "45,START,05:44:15.00,178124079000\n");
-        fs.appendFileSync(file, "45,ZIEL,05:57:30.50,178124874500\n");
-      } else {
-        // General mock data
-        fs.appendFileSync(file, "104,START,01:40:00.00,178124064000\n");
-        fs.appendFileSync(file, "104,ZIEL,03:25:23.14,178124829140\n");
-        fs.appendFileSync(file, "112,START,01:40:00.00,178124064000\n");
-        fs.appendFileSync(file, "112,ZIEL,03:25:24.08,178124830085\n");
-        fs.appendFileSync(file, "098,START,01:40:00.00,178124064000\n");
-        fs.appendFileSync(file, "098,ZIEL,03:25:25.50,178124831500\n");
-        fs.appendFileSync(file, "130,START,01:40:00.00,178124064000\n");
-        fs.appendFileSync(file, "130,ZIEL,03:25:50.11,178124856112\n");
-        fs.appendFileSync(file, "101,START,01:40:00.00,178124064000\n"); // DNF
-      }
+  try {
+    if (fs.existsSync(racesDir)) {
+      const files = fs.readdirSync(racesDir);
+      files.forEach((file) => {
+        if (file.endsWith(".csv")) {
+          ensureBOMAndSep(path.join(racesDir, file), "startnummer,typ,timestamp,exactMs");
+        }
+      });
     }
-  });
+  } catch (err) {
+    console.error("Failed to migrate existing race files:", err);
+  }
 }
 
 // Initialize directory structure if configured on load
@@ -150,19 +173,53 @@ if (activeConfig.isConfigured) {
 // Helper to escape simple CSV fields
 function escapeCSVField(val: string): string {
   if (typeof val !== "string") return String(val);
-  if (val.includes(",") || val.includes('"') || val.includes("\n")) {
+  if (val.includes(";") || val.includes('"') || val.includes("\n") || val.includes("\r")) {
     return `"${val.replace(/"/g, '""')}"`;
   }
   return val;
 }
 
-// Parsing CSV Helper
-function parseCSV(content: string): any[] {
+// Parsing CSV Helper – with proper boolean handling
+function parseCSV(content: string, expectedHeaders?: string[]): any[] {
+  if (content.startsWith("\ufeff")) {
+    content = content.slice(1);
+  }
+  if (content.startsWith("sep=")) {
+    const newlineIndex = content.indexOf("\n");
+    if (newlineIndex !== -1) {
+      content = content.slice(newlineIndex + 1);
+    }
+  }
   const lines = content.split("\n").map(l => l.trim()).filter(l => l.length > 0);
   if (lines.length === 0) return [];
-  const headers = lines[0].split(",").map(h => h.trim());
+
+  // Detect delimiter dynamically (either semicolon or comma)
+  const delimiter = lines[0].includes(";") ? ";" : ",";
+
+  let headers: string[];
+  let startIdx: number;
+
+  if (expectedHeaders && expectedHeaders.length > 0) {
+    const firstLineFields = lines[0].split(delimiter).map(h => h.trim().toLowerCase());
+    // Check if the first line contains any of the expected headers (case-insensitive)
+    const isHeader = expectedHeaders.some(expected => 
+      firstLineFields.includes(expected.toLowerCase())
+    );
+
+    if (isHeader) {
+      headers = lines[0].split(delimiter).map(h => h.trim());
+      startIdx = 1;
+    } else {
+      headers = expectedHeaders;
+      startIdx = 0;
+    }
+  } else {
+    headers = lines[0].split(delimiter).map(h => h.trim());
+    startIdx = 1;
+  }
+
   const results: any[] = [];
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = startIdx; i < lines.length; i++) {
     const rowRaw = lines[i];
     const values: string[] = [];
     let current = "";
@@ -171,7 +228,7 @@ function parseCSV(content: string): any[] {
       const c = rowRaw[charIndex];
       if (c === '"') {
         insideQuotes = !insideQuotes;
-      } else if (c === ',' && !insideQuotes) {
+      } else if (c === delimiter && !insideQuotes) {
         values.push(current.trim());
         current = "";
       } else {
@@ -180,18 +237,249 @@ function parseCSV(content: string): any[] {
     }
     values.push(current.trim());
 
-    if (values.length >= headers.length) {
-      const parsedRow: any = {};
-      headers.forEach((header, idx) => {
-        parsedRow[header] = values[idx] || "";
-      });
-      results.push(parsedRow);
-    }
+    const parsedRow: any = {};
+    headers.forEach((header, idx) => {
+      let val: any = values[idx] !== undefined ? values[idx] : "";
+      // Convert boolean fields
+      if (header === "club") {
+        val = val === "true" || val === "1" || val === "yes";
+      }
+      parsedRow[header] = val;
+    });
+    results.push(parsedRow);
   }
   return results;
 }
 
-// ---------------- API ENDPOINTS ----------------
+// ============================================================
+//  RFID READER BRIDGE MANAGEMENT
+// ============================================================
+
+interface RfidState {
+  mode: "disconnected" | "reader" | "simulation";
+  bridgeProcess: ChildProcess | null;
+  lastEpc: string;
+  lastPc: string;
+  lastCrc: string;
+  lastTimestamp: string;
+  lastRssi: number;
+  connected: boolean;
+  comPort: string;
+  baudRate: number;
+  antennaIndex: number;
+  statusMessages: string[];
+  // Buffer of unread tags (consumed by polling)
+  tagBuffer: Array<{ epc: string; pc: string; crc: string; timestamp: string }>;
+  // For Ziel monitoring
+  monitoring: boolean;
+  monitorRace: string;
+}
+
+const rfidState: RfidState = {
+  mode: "simulation",
+  bridgeProcess: null,
+  lastEpc: "",
+  lastPc: "",
+  lastCrc: "",
+  lastTimestamp: "",
+  lastRssi: -50,
+  connected: false,
+  comPort: "COM8",
+  baudRate: 38400,
+  antennaIndex: 1,
+  statusMessages: [],
+  tagBuffer: [],
+  monitoring: false,
+  monitorRace: "",
+};
+
+function getBridgeExePath(): string {
+  // Look for the compiled bridge exe
+  const candidates = [
+    path.join(__dirname, "Reader", "ReaderBridge", "bin", "Debug", "ReaderBridge.exe"),
+    path.join(process.cwd(), "Reader", "ReaderBridge", "bin", "Debug", "ReaderBridge.exe"),
+    path.join(process.cwd(), "Reader", "ReaderBridge", "bin", "Release", "ReaderBridge.exe"),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return candidates[1]; // default
+}
+
+function startBridge(comPort: string, baudRate: number, antennaIndex: number): boolean {
+  if (rfidState.bridgeProcess) {
+    stopBridge();
+  }
+
+  const exePath = getBridgeExePath();
+  if (!fs.existsSync(exePath)) {
+    rfidState.statusMessages.push(`Bridge executable not found: ${exePath}`);
+    rfidState.mode = "simulation";
+    return false;
+  }
+
+  try {
+    const child = spawn(exePath, [
+      "--port", comPort,
+      "--baud", String(baudRate),
+      "--antenna", String(antennaIndex)
+    ], {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    let lineBuffer = "";
+
+    child.stdout?.on("data", (data: Buffer) => {
+      lineBuffer += data.toString("utf8");
+      const lines = lineBuffer.split("\n");
+      lineBuffer = lines.pop() || "";
+      
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const msg = JSON.parse(trimmed);
+          if (msg.type === "tag") {
+            rfidState.lastEpc = msg.epc || "";
+            rfidState.lastPc = msg.pc || "";
+            rfidState.lastCrc = msg.crc || "";
+            rfidState.lastTimestamp = msg.timestamp || new Date().toISOString();
+            rfidState.lastRssi = msg.rssi || Math.floor(Math.random() * 20) - 55;
+            // Add to buffer for polling
+            rfidState.tagBuffer.push({
+              epc: rfidState.lastEpc,
+              pc: rfidState.lastPc,
+              crc: rfidState.lastCrc,
+              timestamp: rfidState.lastTimestamp,
+            });
+            // Keep buffer manageable
+            if (rfidState.tagBuffer.length > 100) {
+              rfidState.tagBuffer = rfidState.tagBuffer.slice(-50);
+            }
+
+            // If monitoring is active, automatically register ZIEL event
+            if (rfidState.monitoring && rfidState.monitorRace) {
+              handleAutoZielDetection(rfidState.lastEpc);
+            }
+          } else if (msg.type === "status") {
+            rfidState.statusMessages.push(msg.message || "");
+            if (rfidState.statusMessages.length > 50) {
+              rfidState.statusMessages = rfidState.statusMessages.slice(-25);
+            }
+          } else if (msg.type === "error") {
+            rfidState.statusMessages.push(`ERROR: ${msg.message}`);
+          }
+        } catch (parseErr) {
+          // Non-JSON output, ignore
+        }
+      }
+    });
+
+    child.stderr?.on("data", (data: Buffer) => {
+      rfidState.statusMessages.push(`STDERR: ${data.toString("utf8").trim()}`);
+    });
+
+    child.on("close", (code: number | null) => {
+      rfidState.statusMessages.push(`Bridge process exited with code ${code}`);
+      rfidState.connected = false;
+      rfidState.bridgeProcess = null;
+      if (rfidState.mode === "reader") {
+        rfidState.mode = "simulation";
+      }
+    });
+
+    child.on("error", (err: Error) => {
+      rfidState.statusMessages.push(`Bridge process error: ${err.message}`);
+      rfidState.connected = false;
+      rfidState.bridgeProcess = null;
+      rfidState.mode = "simulation";
+    });
+
+    rfidState.bridgeProcess = child;
+    rfidState.connected = true;
+    rfidState.mode = "reader";
+    rfidState.comPort = comPort;
+    rfidState.baudRate = baudRate;
+    rfidState.antennaIndex = antennaIndex;
+    return true;
+  } catch (err: any) {
+    rfidState.statusMessages.push(`Failed to start bridge: ${err.message}`);
+    rfidState.mode = "simulation";
+    return false;
+  }
+}
+
+function stopBridge() {
+  if (rfidState.bridgeProcess) {
+    try {
+      rfidState.bridgeProcess.stdin?.write("QUIT\n");
+      setTimeout(() => {
+        if (rfidState.bridgeProcess) {
+          rfidState.bridgeProcess.kill("SIGTERM");
+          rfidState.bridgeProcess = null;
+        }
+      }, 1000);
+    } catch (e) {
+      rfidState.bridgeProcess?.kill("SIGTERM");
+      rfidState.bridgeProcess = null;
+    }
+  }
+  rfidState.connected = false;
+  rfidState.mode = "disconnected";
+  rfidState.monitoring = false;
+}
+
+// Auto-detection: When a tag is scanned while monitoring, create ZIEL event
+function handleAutoZielDetection(epc: string) {
+  if (!activeConfig.isConfigured || !rfidState.monitorRace) return;
+
+  // Find startnummer for this EPC
+  const tagsFile = getTagsFile();
+  if (!fs.existsSync(tagsFile)) return;
+  const tagsContent = fs.readFileSync(tagsFile, "utf8");
+  const tags = parseCSV(tagsContent, ["startnummer", "epc", "timestamp", "status"]);
+  
+  // Match EPC (case-insensitive, ignore spaces)
+  const normalizedEpc = epc.replace(/\s/g, "").toUpperCase();
+  const matchingTag = tags.find((t: any) => {
+    const tagEpc = (t.epc || "").replace(/\s/g, "").toUpperCase();
+    return tagEpc === normalizedEpc;
+  });
+
+  if (!matchingTag) return;
+
+  const bib = matchingTag.startnummer;
+  const raceName = rfidState.monitorRace;
+  const racesDir = getRacesDir();
+  const filePath = path.join(racesDir, `${raceName}.csv`);
+  
+  if (!fs.existsSync(filePath)) return;
+
+  // Duplicate check: only one ZIEL per bib per race
+  const raceContent = fs.readFileSync(filePath, "utf8");
+  const raceEvents = parseCSV(raceContent, ["startnummer", "typ", "timestamp", "exactMs"]);
+  const alreadyFinished = raceEvents.some(
+    (e: any) => e.startnummer === bib && e.typ === "ZIEL"
+  );
+  if (alreadyFinished) return;
+
+  // Write ZIEL event
+  const now = new Date();
+  const hrs = String(now.getHours()).padStart(2, "0");
+  const mins = String(now.getMinutes()).padStart(2, "0");
+  const secs = String(now.getSeconds()).padStart(2, "0");
+  const hundredths = String(Math.floor(now.getMilliseconds() / 10)).padStart(2, "0");
+  const timestamp = `${hrs}:${mins}:${secs}.${hundredths}`;
+  const exactMs = Date.now();
+
+  const line = `${escapeCSVField(bib)};ZIEL;${escapeCSVField(timestamp)};${exactMs}\r\n`;
+  fs.appendFileSync(filePath, line, "utf8");
+  rfidState.statusMessages.push(`AUTO-ZIEL: Bib #${bib} um ${timestamp}`);
+}
+
+// ============================================================
+//  API ENDPOINTS
+// ============================================================
 
 // settings API
 app.get("/api/settings", (req, res) => {
@@ -218,7 +506,7 @@ app.post("/api/settings", (req, res) => {
 });
 
 app.post("/api/settings/select-directory", (req, res) => {
-  // Use PowerShell folder browser dialog on Windows (single-line semicolon separated to prevent syntax issues)
+  // Use PowerShell folder browser dialog on Windows
   const command = `powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $dialog = New-Object System.Windows.Forms.FolderBrowserDialog; $dialog.Description = 'Wählen Sie den AeroTrackTiming Speicherordner für CSV-Dateien'; $dialog.ShowNewFolderButton = $true; $result = $dialog.ShowDialog(); if ($result -eq 'OK') { Write-Output $dialog.SelectedPath } else { Write-Output 'CANCELLED' }"`;
 
   exec(command, (error, stdout, stderr) => {
@@ -234,7 +522,118 @@ app.post("/api/settings/select-directory", (req, res) => {
   });
 });
 
-// 1. Tag Zuweisung API
+// ============================================================
+//  RFID API ENDPOINTS
+// ============================================================
+
+app.get("/api/rfid/status", (req, res) => {
+  res.json({
+    mode: rfidState.mode,
+    connected: rfidState.connected,
+    comPort: rfidState.comPort,
+    baudRate: rfidState.baudRate,
+    antennaIndex: rfidState.antennaIndex,
+    lastEpc: rfidState.lastEpc,
+    lastTimestamp: rfidState.lastTimestamp,
+    monitoring: rfidState.monitoring,
+    monitorRace: rfidState.monitorRace,
+    bufferSize: rfidState.tagBuffer.length,
+    recentMessages: rfidState.statusMessages.slice(-10),
+  });
+});
+
+app.post("/api/rfid/connect", (req, res) => {
+  const { port, baudRate, antennaIndex } = req.body;
+  const comPort = port || rfidState.comPort || "COM8";
+  const baud = baudRate || rfidState.baudRate || 38400;
+  const antenna = antennaIndex ?? rfidState.antennaIndex ?? 1;
+
+  const ok = startBridge(comPort, baud, antenna);
+  res.json({
+    success: ok,
+    mode: rfidState.mode,
+    connected: rfidState.connected,
+  });
+});
+
+app.post("/api/rfid/disconnect", (req, res) => {
+  stopBridge();
+  res.json({ success: true, mode: rfidState.mode });
+});
+
+app.get("/api/rfid/ports", (req, res) => {
+  // List COM ports on Windows via PowerShell
+  exec(`powershell -NoProfile -Command "[System.IO.Ports.SerialPort]::GetPortNames() | ForEach-Object { Write-Output $_ }"`, (error, stdout) => {
+    if (error) {
+      return res.json({ ports: [] });
+    }
+    const ports = stdout.trim().split("\n").map(p => p.trim()).filter(Boolean);
+    res.json({ ports });
+  });
+});
+
+// Get next unread tag from buffer (for polling)
+app.get("/api/rfid/last-scan", (req, res) => {
+  if (rfidState.tagBuffer.length > 0) {
+    const tag = rfidState.tagBuffer.shift()!;
+    res.json({
+      found: true,
+      epc: tag.epc,
+      pc: tag.pc,
+      crc: tag.crc,
+      timestamp: tag.timestamp,
+      rssi: rfidState.lastRssi,
+    });
+  } else {
+    res.json({ found: false });
+  }
+});
+
+// Simulate a tag scan (for testing without hardware)
+app.post("/api/rfid/simulate-scan", (req, res) => {
+  const { epc } = req.body;
+  if (!epc) {
+    return res.status(400).json({ error: "EPC is required." });
+  }
+  const now = new Date();
+  rfidState.lastEpc = epc;
+  rfidState.lastTimestamp = now.toISOString();
+  rfidState.lastRssi = Math.floor(Math.random() * 20) - 55;
+  rfidState.tagBuffer.push({
+    epc,
+    pc: "3000",
+    crc: "0000",
+    timestamp: now.toISOString(),
+  });
+
+  // If monitoring, handle auto-detection
+  if (rfidState.monitoring && rfidState.monitorRace) {
+    handleAutoZielDetection(epc);
+  }
+
+  res.json({ success: true, epc });
+});
+
+app.post("/api/rfid/start-monitoring", (req, res) => {
+  const { raceName } = req.body;
+  if (!raceName) {
+    return res.status(400).json({ error: "Race name is required." });
+  }
+  rfidState.monitoring = true;
+  rfidState.monitorRace = raceName;
+  res.json({ success: true, monitoring: true, raceName });
+});
+
+app.post("/api/rfid/stop-monitoring", (req, res) => {
+  rfidState.monitoring = false;
+  rfidState.monitorRace = "";
+  res.json({ success: true, monitoring: false });
+});
+
+// ============================================================
+//  1. Tag Zuweisung API
+// ============================================================
+
 app.get("/api/tags", (req, res) => {
   if (!activeConfig.isConfigured) {
     return res.json([]);
@@ -243,7 +642,7 @@ app.get("/api/tags", (req, res) => {
     const tagsFile = getTagsFile();
     if (!fs.existsSync(tagsFile)) return res.json([]);
     const content = fs.readFileSync(tagsFile, "utf8");
-    const data = parseCSV(content);
+    const data = parseCSV(content, ["startnummer", "epc", "timestamp", "status"]);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: "Failed to read tags configuration." });
@@ -260,15 +659,18 @@ app.post("/api/tags", (req, res) => {
   }
   try {
     const tagsFile = getTagsFile();
-    const line = `${escapeCSVField(startnummer)},${escapeCSVField(epc)},${escapeCSVField(timestamp || "")},${escapeCSVField(status || "Locked")}\n`;
-    fs.appendFileSync(tagsFile, line);
+    const line = `${escapeCSVField(startnummer)};${escapeCSVField(epc)};${escapeCSVField(timestamp || "")};${escapeCSVField(status || "Locked")}\r\n`;
+    fs.appendFileSync(tagsFile, line, "utf8");
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to save tag assignment." });
   }
 });
 
-// 2. Anmeldung (Registrierung) API
+// ============================================================
+//  2. Anmeldung (Registrierung) API
+// ============================================================
+
 app.get("/api/registrations", (req, res) => {
   if (!activeConfig.isConfigured) {
     return res.json([]);
@@ -277,7 +679,7 @@ app.get("/api/registrations", (req, res) => {
     const regFile = getRegistrationsFile();
     if (!fs.existsSync(regFile)) return res.json([]);
     const content = fs.readFileSync(regFile, "utf8");
-    const data = parseCSV(content);
+    const data = parseCSV(content, ["vorname", "name", "geburtsdatum", "startnummer", "wohnort", "gender", "club"]);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: "Failed to read registrations file." });
@@ -294,15 +696,18 @@ app.post("/api/registrations", (req, res) => {
   }
   try {
     const regFile = getRegistrationsFile();
-    const line = `${escapeCSVField(vorname)},${escapeCSVField(name)},${escapeCSVField(geburtsdatum || "")},${escapeCSVField(startnummer)},${escapeCSVField(wohnort || "")},${escapeCSVField(gender || "M")},${club ? "true" : "false"}\n`;
-    fs.appendFileSync(regFile, line);
+    const line = `${escapeCSVField(vorname)};${escapeCSVField(name)};${escapeCSVField(geburtsdatum || "")};${escapeCSVField(startnummer)};${escapeCSVField(wohnort || "")};${escapeCSVField(gender || "M")};${club ? "true" : "false"}\r\n`;
+    fs.appendFileSync(regFile, line, "utf8");
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to save registration." });
   }
 });
 
-// 3, 4, 5. Rings for Races API
+// ============================================================
+//  3, 4, 5. Races API
+// ============================================================
+
 app.get("/api/races", (req, res) => {
   if (!activeConfig.isConfigured) {
     return res.json([]);
@@ -333,7 +738,7 @@ app.post("/api/races", (req, res) => {
     const racesDir = getRacesDir();
     const filePath = path.join(racesDir, `${sanitizedName}.csv`);
     if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, "startnummer,typ,timestamp,exactMs\n", "utf8");
+      fs.writeFileSync(filePath, "\ufeffstartnummer;typ;timestamp;exactMs\r\n", "utf8");
     }
     res.json({ name: sanitizedName });
   } catch (err) {
@@ -353,7 +758,7 @@ app.get("/api/races/:raceName", (req, res) => {
   }
   try {
     const content = fs.readFileSync(filePath, "utf8");
-    const data = parseCSV(content);
+    const data = parseCSV(content, ["startnummer", "typ", "timestamp", "exactMs"]);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: "Failed to read race data." });
@@ -375,10 +780,27 @@ app.post("/api/races/:raceName/event", (req, res) => {
   if (!startnummer || !typ) {
     return res.status(400).json({ error: "Startnummer and typ to be specified." });
   }
+
+  // Duplicate check for ZIEL events
+  if (typ === "ZIEL") {
+    try {
+      const content = fs.readFileSync(filePath, "utf8");
+      const events = parseCSV(content, ["startnummer", "typ", "timestamp", "exactMs"]);
+      const alreadyFinished = events.some(
+        (e: any) => e.startnummer === String(startnummer) && e.typ === "ZIEL"
+      );
+      if (alreadyFinished) {
+        return res.status(409).json({ error: `Startnummer ${startnummer} hat bereits eine Zielzeit in diesem Rennen.` });
+      }
+    } catch (e) {
+      // Continue anyway
+    }
+  }
+
   try {
     const ms = exactMs || Date.now();
-    const line = `${escapeCSVField(startnummer)},${escapeCSVField(typ)},${escapeCSVField(timestamp || "")},${ms}\n`;
-    fs.appendFileSync(filePath, line);
+    const line = `${escapeCSVField(startnummer)};${escapeCSVField(typ)};${escapeCSVField(timestamp || "")};${ms}\r\n`;
+    fs.appendFileSync(filePath, line, "utf8");
     res.json({ success: true, timestamp, exactMs: ms });
   } catch (err) {
     res.status(500).json({ error: "Failed to save race event." });
@@ -404,16 +826,16 @@ app.post("/api/races/:raceName/events-bulk", (req, res) => {
     let fileContent = "";
     events.forEach((evt) => {
       const ms = evt.exactMs || now;
-      fileContent += `${escapeCSVField(evt.startnummer)},${escapeCSVField(evt.typ)},${escapeCSVField(evt.timestamp || "")},${ms}\n`;
+      fileContent += `${escapeCSVField(evt.startnummer)};${escapeCSVField(evt.typ)};${escapeCSVField(evt.timestamp || "")};${ms}\r\n`;
     });
-    fs.appendFileSync(filePath, fileContent);
+    fs.appendFileSync(filePath, fileContent, "utf8");
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to bulk save race events." });
   }
 });
 
-// Reset simulation data
+// Reset data
 app.post("/api/reset", (req, res) => {
   if (!activeConfig.isConfigured) {
     return res.status(400).json({ error: "App not configured yet." });
@@ -474,5 +896,17 @@ async function startServer() {
   });
 }
 
-startServer();
+// Cleanup on exit
+process.on("exit", () => {
+  stopBridge();
+});
+process.on("SIGINT", () => {
+  stopBridge();
+  process.exit(0);
+});
+process.on("SIGTERM", () => {
+  stopBridge();
+  process.exit(0);
+});
 
+startServer();

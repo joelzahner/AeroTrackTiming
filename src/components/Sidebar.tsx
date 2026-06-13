@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { RfidStatus } from '../App';
 
 interface SidebarProps {
   activeTab: string;
@@ -8,6 +9,7 @@ interface SidebarProps {
   setWidth: (width: number) => void;
   csvStoragePath: string;
   onChangeStoragePath: () => void;
+  rfidStatus: RfidStatus;
 }
 
 export default function Sidebar({
@@ -17,9 +19,13 @@ export default function Sidebar({
   width,
   setWidth,
   csvStoragePath,
-  onChangeStoragePath
+  onChangeStoragePath,
+  rfidStatus
 }: SidebarProps) {
   const [timeStr, setTimeStr] = useState('');
+  const [showReaderConfig, setShowReaderConfig] = useState(false);
+  const [comPort, setComPort] = useState(rfidStatus.comPort || 'COM8');
+  const [connecting, setConnecting] = useState(false);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -56,6 +62,29 @@ export default function Sidebar({
     animId = requestAnimationFrame(updateTime);
     return () => cancelAnimationFrame(animId);
   }, []);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      await fetch('/api/rfid/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ port: comPort, baudRate: 38400, antennaIndex: 1 }),
+      });
+    } catch (err) {
+      console.error('Failed to connect reader:', err);
+    }
+    setConnecting(false);
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await fetch('/api/rfid/disconnect', { method: 'POST' });
+    } catch (err) {
+      console.error('Failed to disconnect reader:', err);
+    }
+  };
+
   const menuItems = [
     { id: 'tag', label: 'Tag Zuweisung', icon: 'sell' },
     { id: 'anmeldung', label: 'Anmeldung', icon: 'person_add' },
@@ -109,6 +138,59 @@ export default function Sidebar({
       </div>
 
       <div className="px-6 mt-auto pt-6 border-t border-[#e2e2e2] flex flex-col gap-3">
+        {/* RFID Reader Status */}
+        <div className="bg-[#f0f0f0] p-3 rounded-lg border border-[#e2e2e2] flex flex-col gap-1.5 shadow-sm">
+          <div className="flex justify-between items-center text-[#585f6c]">
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[14px]">sensors</span>
+              <span className="font-mono text-[9px] uppercase tracking-wider font-semibold">UHF Reader</span>
+            </div>
+            <button
+              onClick={() => setShowReaderConfig(!showReaderConfig)}
+              title="Reader konfigurieren"
+              className="text-[#4c4546] hover:text-black transition-colors cursor-pointer flex items-center justify-center p-0.5 rounded hover:bg-neutral-200"
+            >
+              <span className="material-symbols-outlined text-[14px]">{showReaderConfig ? 'expand_less' : 'expand_more'}</span>
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${rfidStatus.connected ? 'bg-green-500 animate-pulse' : 'bg-neutral-400'}`}></span>
+            <span className="font-mono text-[10px] text-black font-medium">
+              {rfidStatus.connected ? `Verbunden (${rfidStatus.comPort})` : 'Nicht verbunden'}
+            </span>
+          </div>
+
+          {showReaderConfig && (
+            <div className="mt-1 flex flex-col gap-2 border-t border-[#e2e2e2] pt-2">
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={comPort}
+                  onChange={(e) => setComPort(e.target.value)}
+                  placeholder="COM8"
+                  className="flex-1 bg-white border border-[#cfc4c5] p-1.5 font-mono text-[10px] rounded text-black focus:outline-none focus:border-black"
+                />
+                {rfidStatus.connected ? (
+                  <button
+                    onClick={handleDisconnect}
+                    className="px-2 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-mono text-[9px] rounded cursor-pointer transition-colors"
+                  >
+                    Trennen
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleConnect}
+                    disabled={connecting}
+                    className="px-2 py-1 bg-black hover:bg-neutral-800 text-white font-mono text-[9px] rounded cursor-pointer transition-colors disabled:opacity-50"
+                  >
+                    {connecting ? '...' : 'Verbinden'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Storage path display & config button */}
         <div className="bg-[#f0f0f0] p-3 rounded-lg border border-[#e2e2e2] flex flex-col gap-1 shadow-sm">
           <div className="flex justify-between items-center text-[#585f6c]">

@@ -1,46 +1,51 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TagAssignment } from '../types';
+import { RfidStatus } from '../App';
 
 interface TagZuweisungProps {
-  onScanSimulate: (epc: string) => void;
-  activeEpc: string;
-  setActiveEpc: (epc: string) => void;
   assignments: TagAssignment[];
   onRefresh: () => void;
   onAddAssignment: (startnummer: string, epc: string) => void;
+  rfidStatus: RfidStatus;
 }
 
 export default function TagZuweisung({
-  onScanSimulate,
-  activeEpc,
-  setActiveEpc,
   assignments,
   onRefresh,
-  onAddAssignment
+  onAddAssignment,
+  rfidStatus
 }: TagZuweisungProps) {
   const [startnummer, setStartnummer] = useState('');
-  const [rssi, setRssi] = useState(-42);
+  const [activeEpc, setActiveEpc] = useState('');
+  const [rssi, setRssi] = useState(-50);
+  const [manualEpc, setManualEpc] = useState('');
+  const [scanActive, setScanActive] = useState(false);
 
-  // Auto-generate some simulated tag scans if none is active
+  // Poll for RFID scans when reader is connected
   useEffect(() => {
-    if (!activeEpc) {
-      setActiveEpc('E280 1160 6000 020B 1500 081D');
+    if (rfidStatus.mode !== 'reader' || !rfidStatus.connected) {
+      setScanActive(false);
+      return;
     }
-  }, [activeEpc, setActiveEpc]);
 
-  const generateRandomEpc = () => {
-    const chars = '0123456789ABCDEF';
-    let result = 'E280 1160 ';
-    // 6 groups of 4 block hex
-    result += Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * 16)]).join('');
-    result += ' ';
-    result += Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * 16)]).join('');
-    result += ' 1500 ';
-    result += Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * 16)]).join('');
-    
-    setActiveEpc(result);
-    setRssi(Math.floor(Math.random() * 30) - 65); // -35 to -65 dBm
-  };
+    setScanActive(true);
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/rfid/last-scan');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.found) {
+            setActiveEpc(data.epc);
+            setRssi(data.rssi || -50);
+          }
+        }
+      } catch (err) {
+        // Ignore polling errors
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [rfidStatus.mode, rfidStatus.connected]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,15 +53,25 @@ export default function TagZuweisung({
       alert('Bitte geben Sie eine Startnummer an.');
       return;
     }
-    if (!activeEpc.trim()) {
-      alert('Kein UHF-RFID Tag erkannt.');
+
+    const epcToSave = activeEpc.trim();
+    if (!epcToSave) {
+      alert('Kein UHF-RFID Tag erkannt. Scannen Sie einen Tag oder geben Sie eine EPC manuell ein.');
       return;
     }
     
-    onAddAssignment(startnummer, activeEpc);
+    onAddAssignment(startnummer, epcToSave);
     setStartnummer('');
-    // generate next EPC for smooth scanning workflow
-    generateRandomEpc();
+    setActiveEpc('');
+    setManualEpc('');
+  };
+
+  const handleManualEpcSet = () => {
+    if (manualEpc.trim()) {
+      setActiveEpc(manualEpc.trim());
+      setRssi(-99); // Manual = no real RSSI
+      setManualEpc('');
+    }
   };
 
   return (
@@ -69,18 +84,50 @@ export default function TagZuweisung({
           <div>
             <div className="flex justify-between items-center">
               <span className="font-mono text-xs text-[#585f6c] uppercase tracking-widest block">Active Scan</span>
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border font-mono text-[9px] ${
+                rfidStatus.connected 
+                  ? 'bg-green-50 border-green-200 text-green-700' 
+                  : 'bg-neutral-50 border-[#cfc4c5] text-[#585f6c]'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${rfidStatus.connected ? 'bg-green-500 animate-pulse' : 'bg-neutral-400'}`}></span>
+                {rfidStatus.connected ? 'READER' : 'MANUELL'}
+              </span>
             </div>
             
             <div className="mt-4 p-4 bg-white border border-[#cfc4c5] rounded">
               <p className="font-mono text-xs text-[#585f6c] mb-1">Detected EPC</p>
-              <p className="font-mono text-lg font-bold text-black tracking-tight break-all cursor-all-all">
-                {activeEpc}
+              <p className="font-mono text-lg font-bold text-black tracking-tight break-all">
+                {activeEpc || '— Warte auf Scan —'}
               </p>
               <div className="mt-3 flex justify-between items-center border-t border-[#f3f3f3] pt-2">
-                <span className="font-mono text-xs text-[#585f6c]">RSSI: {rssi} dBm</span>
-                <span className="material-symbols-outlined text-green-500 text-[20px] animate-pulse">sensors</span>
+                <span className="font-mono text-xs text-[#585f6c]">RSSI: {activeEpc ? `${rssi} dBm` : '—'}</span>
+                {scanActive ? (
+                  <span className="material-symbols-outlined text-green-500 text-[20px] animate-pulse">sensors</span>
+                ) : (
+                  <span className="material-symbols-outlined text-neutral-400 text-[20px]">sensors_off</span>
+                )}
               </div>
             </div>
+
+            {/* Manual EPC input (fallback when no reader connected) */}
+            {!rfidStatus.connected && (
+              <div className="mt-3 flex gap-2">
+                <input
+                  type="text"
+                  value={manualEpc}
+                  onChange={(e) => setManualEpc(e.target.value.toUpperCase())}
+                  placeholder="EPC manuell eingeben..."
+                  className="flex-1 bg-white border border-[#cfc4c5] p-2 font-mono text-xs rounded text-black focus:outline-none focus:border-black"
+                />
+                <button
+                  type="button"
+                  onClick={handleManualEpcSet}
+                  className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 border border-[#cfc4c5] text-black font-mono text-xs rounded transition-colors cursor-pointer shrink-0"
+                >
+                  Setzen
+                </button>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSave} className="flex flex-col gap-4">
@@ -115,7 +162,9 @@ export default function TagZuweisung({
           <div>
             <p className="font-sans text-sm font-bold text-black mb-1">Pairing Sequenz</p>
             <p className="font-sans text-xs text-[#585f6c] leading-relaxed">
-              Transponder über die Antenne führen. Sobald der EPC im Feld erscheint, Startnummer eingeben und bestätigen. Der Datensatz wird gelockt und in der CSV-Datei gespeichert.
+              {rfidStatus.connected
+                ? 'Transponder über die Antenne führen. Sobald der EPC im Feld erscheint, Startnummer eingeben und bestätigen. Der Datensatz wird gelockt und in der CSV-Datei gespeichert.'
+                : 'Kein Reader verbunden. Geben Sie die EPC manuell ein oder verbinden Sie den UHF RFID Reader über die Seitenleiste.'}
             </p>
           </div>
         </div>
@@ -127,11 +176,18 @@ export default function TagZuweisung({
           <span className="font-mono text-xs text-[#585f6c] uppercase tracking-widest">Verlauf (Session - tags.csv)</span>
           <button
             onClick={() => {
-              // Trigger simple window print or text CSV copy
-              const csvContent = "startnummer,epc,timestamp,status\n" + 
-                assignments.map(a => `${a.startnummer},${a.epc},${a.timestamp},${a.status}`).join("\n");
+              const escapeCSVField = (val: any): string => {
+                const str = val === undefined || val === null ? "" : String(val);
+                if (str.includes(";") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+                  return `"${str.replace(/"/g, '""')}"`;
+                }
+                return str;
+              };
+
+              const csvContent = "startnummer;epc;timestamp;status\r\n" + 
+                assignments.map(a => `${escapeCSVField(a.startnummer)};${escapeCSVField(a.epc)};${escapeCSVField(a.timestamp)};${escapeCSVField(a.status)}`).join("\r\n");
               
-              const blob = new Blob([csvContent], { type: 'text/csv' });
+              const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
               const url = window.URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.setAttribute('href', url);

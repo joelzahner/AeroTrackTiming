@@ -17,6 +17,17 @@ function formatExactTimestamp(date: Date): string {
   return `${hrs}:${mins}:${secs}.${ms}`;
 }
 
+export interface RfidStatus {
+  mode: 'disconnected' | 'reader' | 'simulation';
+  connected: boolean;
+  comPort: string;
+  baudRate: number;
+  antennaIndex: number;
+  lastEpc: string;
+  monitoring: boolean;
+  monitorRace: string;
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('tag');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -33,11 +44,20 @@ export default function App() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [tagAssignments, setTagAssignments] = useState<TagAssignment[]>([]);
   const [races, setRaces] = useState<string[]>([]);
-  const [activeRace, setActiveRace] = useState<string>('Ötztaler Radmarathon 2024 - Stage 1');
+  const [activeRace, setActiveRace] = useState<string>('');
   const [raceEvents, setRaceEvents] = useState<RaceEvent[]>([]);
 
-  // Telemetry tag parsing simulation state
-  const [activeEpc, setActiveEpc] = useState<string>('');
+  // RFID Reader Status
+  const [rfidStatus, setRfidStatus] = useState<RfidStatus>({
+    mode: 'simulation',
+    connected: false,
+    comPort: 'COM8',
+    baudRate: 38400,
+    antennaIndex: 1,
+    lastEpc: '',
+    monitoring: false,
+    monitorRace: '',
+  });
 
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     const saved = localStorage.getItem('sidebar_width');
@@ -115,6 +135,27 @@ export default function App() {
       console.error('Failed to select directory:', err);
     }
   };
+
+  // ---------------- RFID STATUS ----------------
+
+  const fetchRfidStatus = async () => {
+    try {
+      const res = await fetch('/api/rfid/status');
+      if (res.ok) {
+        const data = await res.json();
+        setRfidStatus(data);
+      }
+    } catch (err) {
+      // Ignore
+    }
+  };
+
+  // Poll RFID status periodically
+  useEffect(() => {
+    fetchRfidStatus();
+    const interval = setInterval(fetchRfidStatus, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // ---------------- FETCH OPERATIONS ----------------
 
@@ -261,7 +302,7 @@ export default function App() {
         fetchTagAssignments();
         fetchRaces();
         setRaceEvents([]);
-        setActiveRace('Ötztaler Radmarathon 2024 - Stage 1');
+        setActiveRace('');
         alert("Zeitmessungsdaten wurden auf Werkseinstellungen zurückgesetzt!");
       }
     } catch (err) {
@@ -294,12 +335,10 @@ export default function App() {
       case 'tag':
         return (
           <TagZuweisung
-            onScanSimulate={(epc) => setActiveEpc(epc)}
-            activeEpc={activeEpc}
-            setActiveEpc={setActiveEpc}
             assignments={tagAssignments}
             onRefresh={fetchTagAssignments}
             onAddAssignment={handleAddTagAssignment}
+            rfidStatus={rfidStatus}
           />
         );
       case 'anmeldung':
@@ -346,6 +385,7 @@ export default function App() {
             onAddRaceEvent={handleAddRaceEvent}
             raceEvents={raceEvents}
             onRefresh={() => fetchRaceEvents(activeRace)}
+            rfidStatus={rfidStatus}
           />
         );
       case 'rangliste':
@@ -356,6 +396,7 @@ export default function App() {
             activeRace={activeRace}
             setActiveRace={setActiveRace}
             raceEvents={raceEvents}
+            onRefreshRaceEvents={fetchRaceEvents}
           />
         );
       default:
@@ -390,6 +431,7 @@ export default function App() {
         setWidth={setSidebarWidth}
         csvStoragePath={settings.csvStoragePath}
         onChangeStoragePath={() => setShowConfigModal(true)}
+        rfidStatus={rfidStatus}
       />
 
       {/* Responsive mobile header block */}

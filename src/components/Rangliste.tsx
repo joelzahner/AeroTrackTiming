@@ -7,6 +7,7 @@ interface RanglisteProps {
   activeRace: string;
   setActiveRace: (race: string) => void;
   raceEvents: RaceEvent[];
+  onRefreshRaceEvents: (raceName: string) => void;
 }
 
 interface CategoryConfig {
@@ -20,7 +21,8 @@ export default function Rangliste({
   registrations,
   activeRace,
   setActiveRace,
-  raceEvents
+  raceEvents,
+  onRefreshRaceEvents
 }: RanglisteProps) {
   const [selectedRace, setSelectedRace] = useState(activeRace || races[0] || '');
   const [selectedCategory, setSelectedCategory] = useState('Alle');
@@ -147,10 +149,18 @@ export default function Rangliste({
   };
 
   const handleDownloadCSV = () => {
-    const csvContent = "pos,startnummer,name,vorname,geburtsdatum,wohnort,club,zeit,differenz\n" + 
-      filteredStandings.map(s => `${s.pos || '-'},${s.startnummer},${s.name},${s.vorname},${s.geburtsdatum},${s.wohnort},${s.club},${s.elapsedLabel},${s.diffLabel}`).join("\n");
+    const escapeCSVField = (val: any): string => {
+      const str = val === undefined || val === null ? "" : String(val);
+      if (str.includes(";") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvContent = "pos;startnummer;name;vorname;geburtsdatum;wohnort;club;zeit;differenz\r\n" + 
+      filteredStandings.map(s => `${s.pos || '-'};${escapeCSVField(s.startnummer)};${escapeCSVField(s.name)};${escapeCSVField(s.vorname)};${escapeCSVField(s.geburtsdatum)};${escapeCSVField(s.wohnort)};${s.club ? 'Ja' : 'Nein'};${escapeCSVField(s.elapsedLabel)};${escapeCSVField(s.diffLabel)}`).join("\r\n");
     
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('href', url);
@@ -233,8 +243,10 @@ export default function Rangliste({
               <select
                 value={selectedRace}
                 onChange={(e) => {
-                  setSelectedRace(e.target.value);
-                  setActiveRace(e.target.value);
+                  const newRace = e.target.value;
+                  setSelectedRace(newRace);
+                  setActiveRace(newRace);
+                  onRefreshRaceEvents(newRace);
                 }}
                 className="block w-full pl-3 pr-10 py-2.5 text-xs font-mono border border-[#cfc4c5] bg-[#ffffff] text-black focus:outline-none focus:border-black rounded appearance-none cursor-pointer"
               >

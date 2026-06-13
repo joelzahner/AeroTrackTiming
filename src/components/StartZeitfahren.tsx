@@ -206,10 +206,6 @@ export default function StartZeitfahren({
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
             <span className="font-mono text-[10px] text-black uppercase tracking-widest">CSV: ACTIVE</span>
           </div>
-          <div className="flex items-center space-x-2 bg-white border border-[#cfc4c5] rounded px-3 py-1.5 shadow-sm select-none">
-            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-            <span className="font-mono text-[10px] text-black uppercase tracking-widest">UHF: READY</span>
-          </div>
         </div>
       </div>
 
