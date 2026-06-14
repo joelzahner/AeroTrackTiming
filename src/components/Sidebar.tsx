@@ -109,9 +109,8 @@ export default function Sidebar({
         <div className="w-[1px] h-10 bg-[#cfc4c5] group-hover:bg-[#585f6c] transition-colors" />
       </div>
 
-      <div className="px-6 mb-12">
-        <h1 className="font-sans text-2xl font-black text-black tracking-tight">AeroTrack</h1>
-        <p className="font-mono text-xs text-[#585f6c] mt-1 tracking-widest uppercase">UHF RFID Engine</p>
+      <div className="px-6 mb-12 text-center">
+        <h1 className="font-sans text-2xl font-black text-black tracking-tight">AeroTrackTiming</h1>
       </div>
 
       <div className="flex-1 flex flex-col w-full space-y-1">
@@ -168,12 +167,12 @@ export default function Sidebar({
                   value={comPort}
                   onChange={(e) => setComPort(e.target.value)}
                   placeholder="COM8"
-                  className="flex-1 bg-white border border-[#cfc4c5] p-1.5 font-mono text-[10px] rounded text-black focus:outline-none focus:border-black"
+                  className="flex-1 min-w-0 bg-white border border-[#cfc4c5] p-1.5 font-mono text-[10px] rounded text-black focus:outline-none focus:border-black"
                 />
                 {rfidStatus.connected ? (
                   <button
                     onClick={handleDisconnect}
-                    className="px-2 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-mono text-[9px] rounded cursor-pointer transition-colors"
+                    className="shrink-0 px-2 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-mono text-[9px] rounded cursor-pointer transition-colors"
                   >
                     Trennen
                   </button>
@@ -181,7 +180,7 @@ export default function Sidebar({
                   <button
                     onClick={handleConnect}
                     disabled={connecting}
-                    className="px-2 py-1 bg-black hover:bg-neutral-800 text-white font-mono text-[9px] rounded cursor-pointer transition-colors disabled:opacity-50"
+                    className="shrink-0 px-2 py-1 bg-black hover:bg-neutral-800 text-white font-mono text-[9px] rounded cursor-pointer transition-colors disabled:opacity-50"
                   >
                     {connecting ? '...' : 'Verbinden'}
                   </button>

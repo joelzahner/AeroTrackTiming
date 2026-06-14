@@ -234,10 +234,6 @@ export default function Rangliste({
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const handleDownloadExcel = async () => {
     if (selectedRaces.length === 0) {
       alert("Bitte wählen Sie mindestens ein Rennen aus.");
@@ -471,13 +467,6 @@ export default function Rangliste({
           <p className="text-xs text-[#585f6c] font-sans">Ergebnisse, Telemetrie-Auswertung &amp; kombinierte Gesamtwertung aus CSV-Dateien.</p>
         </div>
         <div className="flex space-x-3">
-          <button
-            onClick={handlePrint}
-            className="border border-[#cfc4c5] bg-transparent text-black hover:bg-neutral-100 transition-colors px-4 py-2 text-xs font-mono rounded flex items-center space-x-2 cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[18px]">print</span>
-            <span>Drucken</span>
-          </button>
           <button
             onClick={handleDownloadExcel}
             className="bg-black text-white hover:bg-neutral-800 transition-colors px-4 py-2 text-xs font-mono rounded flex items-center space-x-2 cursor-pointer"

@@ -437,8 +437,7 @@ export default function App() {
       {/* Responsive mobile header block */}
       <header className="md:hidden flex items-center justify-between px-6 py-4 bg-white border-b border-[#e2e2e2] z-50 sticky top-0 shrink-0">
         <div>
-          <h1 className="font-sans text-lg font-black text-black leading-none">AeroTrack</h1>
-          <span className="font-mono text-[9px] text-gray-500 uppercase tracking-widest leading-none">RFID Engine</span>
+          <h1 className="font-sans text-lg font-black text-black leading-none">AeroTrackTiming</h1>
         </div>
         <div className="flex gap-2 items-center">
           <button
@@ -538,13 +537,10 @@ function SetupOverlay({ defaultPath, onSave, onSelectDir }: SetupOverlayProps) {
 
       <div className="bg-white border border-[#cfc4c5] p-8 md:p-12 rounded-lg max-w-xl w-full shadow-2xl relative z-10">
         <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 border-b border-[#e2e2e2] pb-4">
             <span className="material-symbols-outlined text-[32px] text-black">sensors</span>
-            <h1 className="font-sans text-3xl font-black text-black tracking-tight">AeroTrack</h1>
+            <h1 className="font-sans text-3xl font-black text-black tracking-tight">AeroTrackTiming</h1>
           </div>
-          <span className="font-mono text-[10px] text-[#585f6c] uppercase tracking-widest block mb-6 border-b border-[#e2e2e2] pb-4">
-            UHF RFID Zeiterfassungssystem
-          </span>
           <h2 className="font-sans text-xl font-bold text-black mb-3">Ersteinrichtung: Speicherort festlegen</h2>
           <p className="font-sans text-sm text-[#585f6c] leading-relaxed">
             Bitte wählen Sie aus, in welchem Ordner die CSV-Dateien für Ihre Zeitmessungen, Transponder-Zuweisungen und Anmeldungen gespeichert werden sollen. 
