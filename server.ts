@@ -2,12 +2,11 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { exec, spawn, ChildProcess } from "child_process";
-import { createServer as createViteServer } from "vite";
 import { fileURLToPath } from "url";
 import ExcelJS from "exceljs";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const _filename = typeof __filename !== "undefined" ? __filename : fileURLToPath(import.meta.url);
+const _dirname = typeof __dirname !== "undefined" ? __dirname : path.dirname(_filename);
 
 const app = express();
 const PORT = 3000;
@@ -391,9 +390,15 @@ const rfidState: RfidState = {
 };
 
 function getBridgeExePath(): string {
+  // Look for the bridge exe in process.resourcesPath first (for packaged app)
+  if (process.resourcesPath) {
+    const prodPath = path.join(process.resourcesPath, "ReaderBridge", "ReaderBridge.exe");
+    if (fs.existsSync(prodPath)) return prodPath;
+  }
+
   // Look for the compiled bridge exe
   const candidates = [
-    path.join(__dirname, "Reader", "ReaderBridge", "bin", "Debug", "ReaderBridge.exe"),
+    path.join(_dirname, "Reader", "ReaderBridge", "bin", "Debug", "ReaderBridge.exe"),
     path.join(process.cwd(), "Reader", "ReaderBridge", "bin", "Debug", "ReaderBridge.exe"),
     path.join(process.cwd(), "Reader", "ReaderBridge", "bin", "Release", "ReaderBridge.exe"),
   ];
@@ -1195,8 +1200,8 @@ function applyCellStyles(destCell: any, srcStyle: any) {
 // Find template workbook path in development and production (packaged Electron)
 const getTemplatePath = (): string => {
   const candidates = [
-    path.join(__dirname, "Rangliste_Vorlage.xlsx"),
-    path.join(__dirname, "..", "Rangliste_Vorlage.xlsx"),
+    path.join(_dirname, "Rangliste_Vorlage.xlsx"),
+    path.join(_dirname, "..", "Rangliste_Vorlage.xlsx"),
     path.join(process.cwd(), "Rangliste_Vorlage.xlsx")
   ];
   for (const c of candidates) {
@@ -1779,13 +1784,15 @@ app.post("/api/reset", (req, res) => {
 // Serve frontend with Vite configuration or statically
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
+    const vitePkg = "vite";
+    const viteModule = await import(vitePkg);
+    const vite = await viteModule.createServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = __dirname;
+    const distPath = _dirname;
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));

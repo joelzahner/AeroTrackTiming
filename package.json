@@ -55,6 +55,15 @@
       "icon.ico",
       "Rangliste_Vorlage.xlsx"
     ],
+    "extraResources": [
+      {
+        "from": "Reader/ReaderBridge/bin/Debug",
+        "to": "ReaderBridge",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "icon.ico"

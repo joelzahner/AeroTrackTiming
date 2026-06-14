@@ -20,6 +20,18 @@ function createWindow() {
     autoHideMenuBar: true,
   });
 
+  let retries = 0;
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    if (validatedURL.startsWith('http://localhost:3000') && retries < 30) {
+      retries++;
+      setTimeout(() => {
+        if (!mainWindow.isDestroyed()) {
+          mainWindow.loadURL('http://localhost:3000');
+        }
+      }, 200);
+    }
+  });
+
   mainWindow.loadURL('http://localhost:3000');
   
   // mainWindow.webContents.openDevTools();

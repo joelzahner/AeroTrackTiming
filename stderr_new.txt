@@ -1,0 +1,4 @@
+[25052:0614/132552.058:INFO:CONSOLE:2] "Electron sandboxed_renderer.bundle.js script failed to run", source: node:electron/js2c/sandbox_bundle (2)
+[25052:0614/132552.058:INFO:CONSOLE:2] "TypeError: Cannot destructure property 'preloadScripts' of 'binding.startupData' as it is null.", source: node:electron/js2c/sandbox_bundle (2)
+(node:25052) [DEP0180] DeprecationWarning: fs.Stats constructor is deprecated.
+(Use `AeroTrackTiming --trace-deprecation ...` to show where the warning was created)
