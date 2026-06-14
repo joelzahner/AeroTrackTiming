@@ -559,7 +559,7 @@ export default function Rangliste({
       {/* Categories Builder Section (Custom categories editor) */}
       <section className="bg-neutral-50 border border-[#cfc4c5] p-5 mb-8 rounded print:hidden">
         <h4 className="font-sans text-xs font-extrabold text-[#585f6c] uppercase mb-4 tracking-widest flex items-center gap-2">
-          🔧 Kategorien-Konstrukteur (Filter regeln)
+          🔧 Kategorien erstellen
         </h4>
 
         {/* Existing categories list */}
@@ -587,16 +587,11 @@ export default function Rangliste({
               </button>
             </div>
           ))}
-          {categories.length === 0 && (
-            <div className="text-xs italic text-[#585f6c] font-sans">
-              Keine Kategorien hinterlegt. Alle Auswertungen werden standardmässig ungefiltert gelistet.
-            </div>
-          )}
         </div>
 
         {/* Form to insert new categories */}
-        <form onSubmit={handleAddCategory} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 items-end border-t border-[#e2e2e2]/60 pt-4">
-          <div>
+        <form onSubmit={handleAddCategory} className="grid grid-cols-1 sm:grid-cols-6 lg:grid-cols-12 gap-4 items-end border-t border-[#e2e2e2]/60 pt-4">
+          <div className="sm:col-span-3 lg:col-span-4">
             <label className="block text-[10px] uppercase font-mono text-[#585f6c] mb-1">Kategorie Name</label>
             <input
               type="text"
@@ -604,41 +599,41 @@ export default function Rangliste({
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
               placeholder="e.g. U19 Herren"
-              className="p-2 text-xs font-sans border border-[#cfc4c5] rounded w-full bg-white text-black"
+              className="p-2 text-xs font-sans border border-[#cfc4c5] rounded w-full bg-white text-black h-[34px]"
             />
           </div>
-          <div>
+          <div className="sm:col-span-1 lg:col-span-1">
             <label className="block text-[10px] uppercase font-mono text-[#585f6c] mb-1">Jahrgang von (Min)</label>
             <input
               type="number"
               required
               value={newCatMin}
               onChange={(e) => setNewCatMin(parseInt(e.target.value))}
-              className="p-2 text-xs font-mono border border-[#cfc4c5] rounded w-full bg-white text-black"
+              className="p-2 text-xs font-mono border border-[#cfc4c5] rounded w-full bg-white text-black h-[34px]"
             />
           </div>
-          <div>
+          <div className="sm:col-span-1 lg:col-span-1">
             <label className="block text-[10px] uppercase font-mono text-[#585f6c] mb-1">Jahrgang bis (Max)</label>
             <input
               type="number"
               required
               value={newCatMax}
               onChange={(e) => setNewCatMax(parseInt(e.target.value))}
-              className="p-2 text-xs font-mono border border-[#cfc4c5] rounded w-full bg-white text-black"
+              className="p-2 text-xs font-mono border border-[#cfc4c5] rounded w-full bg-white text-black h-[34px]"
             />
           </div>
-          <div>
+          <div className="sm:col-span-1 lg:col-span-1">
             <label className="block text-[10px] uppercase font-mono text-[#585f6c] mb-1">Clubmitglied</label>
             <select
               value={newCatClub}
               onChange={(e) => setNewCatClub(e.target.value as 'Ja' | 'Nein')}
               className="p-2 text-xs font-sans border border-[#cfc4c5] rounded w-full bg-white text-black h-[34px] cursor-pointer"
             >
-              <option value="Ja">Ja (Nur Clubmitglieder)</option>
-              <option value="Nein">Nein (Nur Gäste)</option>
+              <option value="Ja">Ja</option>
+              <option value="Nein">Nein</option>
             </select>
           </div>
-          <div>
+          <div className="sm:col-span-3 lg:col-span-2">
             <label className="block text-[10px] uppercase font-mono text-[#585f6c] mb-1">Geschlecht</label>
             <select
               value={newCatGender}
@@ -650,12 +645,14 @@ export default function Rangliste({
               <option value="W">Frauen</option>
             </select>
           </div>
-          <button
-            type="submit"
-            className="w-full bg-white hover:bg-[#e2e2e2] text-black border border-black font-mono text-xs py-2 px-3 rounded transition-colors cursor-pointer h-[34px]"
-          >
-            ➕ Kategorie hinzufügen
-          </button>
+          <div className="sm:col-span-3 lg:col-span-3">
+            <button
+              type="submit"
+              className="w-full bg-white hover:bg-[#e2e2e2] text-black border border-black font-mono text-xs py-2 px-3 rounded transition-colors cursor-pointer h-[34px]"
+            >
+              ➕ Kategorie hinzufügen
+            </button>
+          </div>
         </form>
       </section>
 
