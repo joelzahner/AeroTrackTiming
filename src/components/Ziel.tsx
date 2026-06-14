@@ -280,7 +280,7 @@ export default function Ziel({
                   className="w-full text-left p-3.5 bg-white border border-[#cfc4c5] hover:bg-neutral-50 transition-colors font-sans text-xs font-semibold text-black rounded relative flex justify-between items-center cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
-                    📁 <span className="font-mono text-[11px] font-bold">{r}.csv</span>
+                    📁 <span className="font-mono text-[11px] font-bold">{r}/</span>
                   </span>
                   <span className="text-[10px] text-gray-500 uppercase font-mono">Verfolgen →</span>
                 </button>
@@ -343,7 +343,7 @@ export default function Ziel({
             <label className="block font-mono text-[10px] text-[#585f6c] uppercase tracking-wider">ACTIVE RACE CSV</label>
           </div>
           <div className="font-sans text-xs font-bold text-black border border-[#cfc4c5] p-2 bg-[#f9f9f9] rounded flex justify-between items-center">
-            <span>📁 {activeRace}.csv</span>
+            <span>📁 {activeRace}/</span>
             <span className={`text-[9px] font-mono font-bold ${rfidStatus.connected ? 'text-green-600 animate-pulse' : 'text-[#585f6c]'}`}>
               ● {rfidStatus.connected ? 'READER ACTIVE' : 'SIMULATION'}
             </span>
@@ -474,7 +474,7 @@ export default function Ziel({
         {/* Right Side Standings + Simulation trigger */}
         <div className="lg:col-span-4 bg-[#f9f9f9] border border-[#cfc4c5] rounded-lg flex flex-col justify-between overflow-hidden">
           <div className="p-4 border-b border-[#cfc4c5] bg-[#ffffff] flex justify-between items-center">
-            <h2 className="font-mono text-xs text-[#585f6c] font-bold uppercase tracking-wider">Ergebnisliste (Live in .csv)</h2>
+            <h2 className="font-mono text-xs text-[#585f6c] font-bold uppercase tracking-wider">Ergebnisliste (Live in start-/zielzeiten.csv)</h2>
             <span className="px-1.5 py-0.5 bg-neutral-100 text-black font-mono text-[9px] rounded border border-[#cfc4c5]">
               {finishersCount} Finished
             </span>

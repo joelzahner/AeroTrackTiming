@@ -143,7 +143,7 @@ export default function StartZeitfahren({
                   className="w-full text-left p-3.5 bg-white border border-[#cfc4c5] hover:bg-neutral-50 transition-colors font-sans text-xs font-semibold text-black rounded relative flex justify-between items-center cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
-                    📁 <span className="font-mono text-[11px] font-bold">{r}.csv</span>
+                    📁 <span className="font-mono text-[11px] font-bold">{r}/</span>
                   </span>
                   <span className="text-[10px] text-gray-500 uppercase font-mono">Aktivieren →</span>
                 </button>
@@ -197,7 +197,7 @@ export default function StartZeitfahren({
             ← Zurück zur Auswahl
           </button>
           <div className="font-sans text-xs flex items-center gap-2 bg-white px-3 py-1.5 border border-[#cfc4c5] rounded">
-            📁 <span className="font-mono text-[11px] font-bold text-black">{activeRace}.csv</span>
+            📁 <span className="font-mono text-[11px] font-bold text-black">{activeRace}/</span>
           </div>
         </div>
 

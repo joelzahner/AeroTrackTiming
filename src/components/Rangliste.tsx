@@ -251,7 +251,7 @@ export default function Rangliste({
                 className="block w-full pl-3 pr-10 py-2.5 text-xs font-mono border border-[#cfc4c5] bg-[#ffffff] text-black focus:outline-none focus:border-black rounded appearance-none cursor-pointer"
               >
                 {races.map((r, i) => (
-                  <option key={i} value={r}>📁 {r}.csv</option>
+                  <option key={i} value={r}>📁 {r}/</option>
                 ))}
               </select>
             </div>

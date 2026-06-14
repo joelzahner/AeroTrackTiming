@@ -35,7 +35,7 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
     const reg: Registration = {
       vorname: vorname.trim(),
       name: name.trim(),
-      geburtsdatum: geburtsdatum || '1990-01-01',
+      geburtsdatum: geburtsdatum || '1990',
       startnummer: startnummer.trim(),
       wohnort: wohnort.trim() || 'Unbekannt',
       gender,
@@ -154,11 +154,13 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="font-sans text-[11px] font-bold text-[#5c5c5c] mb-1">Geburtsdatum</label>
+                  <label className="font-sans text-[11px] font-bold text-[#5c5c5c] mb-1">Jahrgang</label>
                   <input
-                    type="date"
+                    type="text"
+                    maxLength={4}
+                    placeholder="1990"
                     value={geburtsdatum}
-                    onChange={(e) => setGeburtsdatum(e.target.value)}
+                    onChange={(e) => setGeburtsdatum(e.target.value.replace(/[^0-9]/g, ''))}
                     className="bg-transparent border-b border-[#7e7576] font-mono text-xs py-1 focus:border-black outline-none text-black"
                   />
                 </div>
@@ -274,7 +276,7 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
                   <tr>
                     <th className="py-3 px-6 font-mono text-xs text-[#585f6c] w-20">St.-Nr.</th>
                     <th className="py-3 px-6 font-mono text-xs text-[#585f6c]">Name</th>
-                    <th className="py-3 px-6 font-mono text-xs text-[#585f6c] w-24">Geburtstag</th>
+                    <th className="py-3 px-6 font-mono text-xs text-[#585f6c] w-24">Jahrgang</th>
                     <th className="py-3 px-6 font-mono text-xs text-[#585f6c]">Wohnort</th>
                     <th className="py-3 px-6 font-mono text-xs text-[#585f6c] w-16">M/W</th>
                     <th className="py-3 px-6 font-mono text-xs text-[#585f6c] text-right w-24">Club</th>

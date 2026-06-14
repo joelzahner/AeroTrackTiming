@@ -131,7 +131,7 @@ export default function Massenstart({
                   className="w-full text-left p-3.5 bg-white border border-[#cfc4c5] hover:bg-neutral-50 transition-colors font-sans text-xs font-semibold text-black rounded relative flex justify-between items-center cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
-                    📁 <span className="font-mono text-[11px] font-bold">{r}.csv</span>
+                    📁 <span className="font-mono text-[11px] font-bold">{r}/</span>
                   </span>
                   <span className="text-[10px] text-gray-500 uppercase font-mono">Aktivieren →</span>
                 </button>
@@ -357,7 +357,7 @@ export default function Massenstart({
             <div className="p-4 border-t border-[#cfc4c5] bg-[#f9f9f9] flex justify-between items-center text-xs">
               <div className="flex items-center gap-2 text-[#585f6c]">
                 <span className="material-symbols-outlined text-xs">description</span>
-                <span className="font-mono text-[10px]">Einträge werden in {activeRace}.csv exportiert</span>
+                <span className="font-mono text-[10px]">Einträge werden in {activeRace}/startzeiten.csv exportiert</span>
               </div>
             </div>
           </div>

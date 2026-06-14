@@ -63,16 +63,102 @@ function getDataDir(): string {
   return activeConfig.csvStoragePath;
 }
 
-function getRacesDir(): string {
-  return path.join(getDataDir(), "races");
-}
-
 function getTagsFile(): string {
   return path.join(getDataDir(), "tags.csv");
 }
 
 function getRegistrationsFile(): string {
   return path.join(getDataDir(), "registrations.csv");
+}
+
+// Helper to parse "HH:MM:SS.hh" into milliseconds from the start of the day
+function parseTimeToMs(timeStr: string): number {
+  if (!timeStr) return 0;
+  const parts = timeStr.split(":");
+  if (parts.length < 3) return 0;
+  const hrs = parseInt(parts[0], 10) || 0;
+  const mins = parseInt(parts[1], 10) || 0;
+  const secParts = parts[2].split(".");
+  const secs = parseInt(secParts[0], 10) || 0;
+  let ms = 0;
+  if (secParts[1]) {
+    const msStr = secParts[1].padEnd(3, "0").slice(0, 3);
+    ms = parseInt(msStr, 10) || 0;
+  }
+  return ((hrs * 3600 + mins * 60 + secs) * 1000) + ms;
+}
+
+// Migrate old races folder to new race directories with separate start/finish CSVs
+function migrateOldRaces(dirPath: string) {
+  const oldRacesDir = path.join(dirPath, "races");
+  if (!fs.existsSync(oldRacesDir)) return;
+
+  try {
+    const regFile = path.join(dirPath, "registrations.csv");
+    let registrations: any[] = [];
+    if (fs.existsSync(regFile)) {
+      const regContent = fs.readFileSync(regFile, "utf8");
+      registrations = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "wohnort", "gender", "club"]);
+    }
+
+    const files = fs.readdirSync(oldRacesDir);
+    for (const file of files) {
+      if (file.endsWith(".csv")) {
+        const raceName = file.replace(".csv", "");
+        const sanitizedRaceName = raceName.replace(/[\\\/:\*\?"<>\|]/g, "_").trim();
+        const oldFilePath = path.join(oldRacesDir, file);
+        const newRaceDir = path.join(dirPath, sanitizedRaceName);
+
+        // Read old race events
+        const oldContent = fs.readFileSync(oldFilePath, "utf8");
+        const oldEvents = parseCSV(oldContent, ["startnummer", "typ", "timestamp", "exactMs"]);
+
+        // Create new directory
+        if (!fs.existsSync(newRaceDir)) {
+          fs.mkdirSync(newRaceDir, { recursive: true });
+        }
+
+        const startFile = path.join(newRaceDir, "startzeiten.csv");
+        const finishFile = path.join(newRaceDir, "zielzeiten.csv");
+
+        let startLines = "\ufeffstartnummer;vorname;nachname;jahrgang;startzeit;exactMs\r\n";
+        let finishLines = "\ufeffstartnummer;vorname;nachname;jahrgang;zielzeit;exactMs\r\n";
+
+        for (const evt of oldEvents) {
+          const bib = evt.startnummer;
+          if (!bib) continue;
+          
+          const athlete = registrations.find(r => String(r.startnummer) === String(bib));
+          const vorname = athlete ? athlete.vorname : "";
+          const nachname = athlete ? athlete.name : "";
+          const jahrgang = athlete ? athlete.geburtsdatum : "";
+          const timestamp = evt.timestamp || "";
+          const exactMs = evt.exactMs || Date.now();
+
+          const line = `${escapeCSVField(bib)};${escapeCSVField(vorname)};${escapeCSVField(nachname)};${escapeCSVField(jahrgang)};${escapeCSVField(timestamp)};${exactMs}\r\n`;
+
+          if (evt.typ === "START") {
+            startLines += line;
+          } else if (evt.typ === "ZIEL") {
+            finishLines += line;
+          }
+        }
+
+        fs.writeFileSync(startFile, startLines, "utf8");
+        fs.writeFileSync(finishFile, finishLines, "utf8");
+
+        // Delete old file
+        fs.unlinkSync(oldFilePath);
+        console.log(`Migrated old race file ${file} to folder ${sanitizedRaceName}`);
+      }
+    }
+
+    // Delete old races directory
+    fs.rmdirSync(oldRacesDir);
+    console.log("Successfully migrated all old races and removed 'races' directory");
+  } catch (err) {
+    console.error("Failed to migrate old races:", err);
+  }
 }
 
 // Ensure base files and templates exist in the target directory
@@ -133,12 +219,8 @@ function ensureBOMAndSep(filePath: string, defaultHeader: string) {
 }
 
 function initializeStorage(dirPath: string) {
-  const racesDir = path.join(dirPath, "races");
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
-  }
-  if (!fs.existsSync(racesDir)) {
-    fs.mkdirSync(racesDir, { recursive: true });
   }
 
   const tagsFile = path.join(dirPath, "tags.csv");
@@ -147,17 +229,27 @@ function initializeStorage(dirPath: string) {
   const registrationsFile = path.join(dirPath, "registrations.csv");
   ensureBOMAndSep(registrationsFile, "vorname,name,geburtsdatum,startnummer,wohnort,gender,club");
 
+  // Run migration of old races folder if present
+  migrateOldRaces(dirPath);
+
+  // Iterate over race directories to ensure BOM and structure of existing startzeiten.csv / zielzeiten.csv
   try {
-    if (fs.existsSync(racesDir)) {
-      const files = fs.readdirSync(racesDir);
-      files.forEach((file) => {
-        if (file.endsWith(".csv")) {
-          ensureBOMAndSep(path.join(racesDir, file), "startnummer,typ,timestamp,exactMs");
+    const items = fs.readdirSync(dirPath);
+    items.forEach((item) => {
+      const fullPath = path.join(dirPath, item);
+      if (fs.statSync(fullPath).isDirectory() && !["node_modules", ".git", "races"].includes(item)) {
+        const startFile = path.join(fullPath, "startzeiten.csv");
+        const finishFile = path.join(fullPath, "zielzeiten.csv");
+        if (fs.existsSync(startFile)) {
+          ensureBOMAndSep(startFile, "startnummer,vorname,nachname,jahrgang,startzeit,exactMs");
         }
-      });
-    }
+        if (fs.existsSync(finishFile)) {
+          ensureBOMAndSep(finishFile, "startnummer,vorname,nachname,jahrgang,zielzeit,exactMs");
+        }
+      }
+    });
   } catch (err) {
-    console.error("Failed to migrate existing race files:", err);
+    console.error("Failed to migrate existing race directories:", err);
   }
 }
 
@@ -450,16 +542,16 @@ function handleAutoZielDetection(epc: string) {
 
   const bib = matchingTag.startnummer;
   const raceName = rfidState.monitorRace;
-  const racesDir = getRacesDir();
-  const filePath = path.join(racesDir, `${raceName}.csv`);
+  const raceDir = path.join(getDataDir(), raceName);
+  const filePath = path.join(raceDir, "zielzeiten.csv");
   
   if (!fs.existsSync(filePath)) return;
 
   // Duplicate check: only one ZIEL per bib per race
   const raceContent = fs.readFileSync(filePath, "utf8");
-  const raceEvents = parseCSV(raceContent, ["startnummer", "typ", "timestamp", "exactMs"]);
+  const raceEvents = parseCSV(raceContent, ["startnummer", "vorname", "nachname", "jahrgang", "zielzeit", "exactMs"]);
   const alreadyFinished = raceEvents.some(
-    (e: any) => e.startnummer === bib && e.typ === "ZIEL"
+    (e: any) => String(e.startnummer) === String(bib)
   );
   if (alreadyFinished) return;
 
@@ -472,7 +564,27 @@ function handleAutoZielDetection(epc: string) {
   const timestamp = `${hrs}:${mins}:${secs}.${hundredths}`;
   const exactMs = Date.now();
 
-  const line = `${escapeCSVField(bib)};ZIEL;${escapeCSVField(timestamp)};${exactMs}\r\n`;
+  // Fetch registration details
+  const regFile = getRegistrationsFile();
+  let vorname = "";
+  let name = "";
+  let geburtsdatum = "";
+  if (fs.existsSync(regFile)) {
+    try {
+      const regContent = fs.readFileSync(regFile, "utf8");
+      const regs = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "wohnort", "gender", "club"]);
+      const athlete = regs.find((r: any) => String(r.startnummer) === String(bib));
+      if (athlete) {
+        vorname = athlete.vorname || "";
+        name = athlete.name || "";
+        geburtsdatum = athlete.geburtsdatum || "";
+      }
+    } catch (regErr) {
+      console.error("Failed to read registrations for auto-detection:", regErr);
+    }
+  }
+
+  const line = `${escapeCSVField(bib)};${escapeCSVField(vorname)};${escapeCSVField(name)};${escapeCSVField(geburtsdatum)};${escapeCSVField(timestamp)};${exactMs}\r\n`;
   fs.appendFileSync(filePath, line, "utf8");
   rfidState.statusMessages.push(`AUTO-ZIEL: Bib #${bib} um ${timestamp}`);
 }
@@ -713,12 +825,15 @@ app.get("/api/races", (req, res) => {
     return res.json([]);
   }
   try {
-    const racesDir = getRacesDir();
-    if (!fs.existsSync(racesDir)) return res.json([]);
-    const files = fs.readdirSync(racesDir);
-    const races = files
-      .filter((file) => file.endsWith(".csv"))
-      .map((file) => file.replace(".csv", ""));
+    const dataDir = getDataDir();
+    if (!fs.existsSync(dataDir)) return res.json([]);
+    const files = fs.readdirSync(dataDir);
+    const races = files.filter((file) => {
+      const fullPath = path.join(dataDir, file);
+      // Only directories that aren't node_modules, .git, or races are race folders
+      return fs.statSync(fullPath).isDirectory() && 
+             !["node_modules", ".git", "races"].includes(file);
+    });
     res.json(races);
   } catch (err) {
     res.status(500).json({ error: "Failed to list races." });
@@ -735,14 +850,24 @@ app.post("/api/races", (req, res) => {
   }
   try {
     const sanitizedName = name.replace(/[\\\/:\*\?"<>\|]/g, "_").trim();
-    const racesDir = getRacesDir();
-    const filePath = path.join(racesDir, `${sanitizedName}.csv`);
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, "\ufeffstartnummer;typ;timestamp;exactMs\r\n", "utf8");
+    const raceDir = path.join(getDataDir(), sanitizedName);
+    if (!fs.existsSync(raceDir)) {
+      fs.mkdirSync(raceDir, { recursive: true });
     }
+    
+    const startFile = path.join(raceDir, "startzeiten.csv");
+    const finishFile = path.join(raceDir, "zielzeiten.csv");
+    
+    if (!fs.existsSync(startFile)) {
+      fs.writeFileSync(startFile, "\ufeffstartnummer;vorname;nachname;jahrgang;startzeit;exactMs\r\n", "utf8");
+    }
+    if (!fs.existsSync(finishFile)) {
+      fs.writeFileSync(finishFile, "\ufeffstartnummer;vorname;nachname;jahrgang;zielzeit;exactMs\r\n", "utf8");
+    }
+    
     res.json({ name: sanitizedName });
   } catch (err) {
-    res.status(500).json({ error: "Failed to create race file." });
+    res.status(500).json({ error: "Failed to create race directory." });
   }
 });
 
@@ -751,15 +876,47 @@ app.get("/api/races/:raceName", (req, res) => {
     return res.status(400).json({ error: "App not configured yet." });
   }
   const raceName = req.params.raceName;
-  const racesDir = getRacesDir();
-  const filePath = path.join(racesDir, `${raceName}.csv`);
-  if (!fs.existsSync(filePath)) {
+  const raceDir = path.join(getDataDir(), raceName);
+  if (!fs.existsSync(raceDir)) {
     return res.status(404).json({ error: `Race '${raceName}' does not exist.` });
   }
   try {
-    const content = fs.readFileSync(filePath, "utf8");
-    const data = parseCSV(content, ["startnummer", "typ", "timestamp", "exactMs"]);
-    res.json(data);
+    const startFile = path.join(raceDir, "startzeiten.csv");
+    const finishFile = path.join(raceDir, "zielzeiten.csv");
+    
+    let events: any[] = [];
+    
+    if (fs.existsSync(startFile)) {
+      const startContent = fs.readFileSync(startFile, "utf8");
+      const startRows = parseCSV(startContent, ["startnummer", "vorname", "nachname", "jahrgang", "startzeit", "exactMs"]);
+      startRows.forEach(row => {
+        if (row.startnummer) {
+          events.push({
+            startnummer: String(row.startnummer),
+            typ: "START",
+            timestamp: row.startzeit || "",
+            exactMs: Number(row.exactMs) || parseTimeToMs(row.startzeit)
+          });
+        }
+      });
+    }
+    
+    if (fs.existsSync(finishFile)) {
+      const finishContent = fs.readFileSync(finishFile, "utf8");
+      const finishRows = parseCSV(finishContent, ["startnummer", "vorname", "nachname", "jahrgang", "zielzeit", "exactMs"]);
+      finishRows.forEach(row => {
+        if (row.startnummer) {
+          events.push({
+            startnummer: String(row.startnummer),
+            typ: "ZIEL",
+            timestamp: row.zielzeit || "",
+            exactMs: Number(row.exactMs) || parseTimeToMs(row.zielzeit)
+          });
+        }
+      });
+    }
+    
+    res.json(events);
   } catch (err) {
     res.status(500).json({ error: "Failed to read race data." });
   }
@@ -771,26 +928,30 @@ app.post("/api/races/:raceName/event", (req, res) => {
     return res.status(400).json({ error: "App not configured yet." });
   }
   const raceName = req.params.raceName;
-  const racesDir = getRacesDir();
-  const filePath = path.join(racesDir, `${raceName}.csv`);
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "Race file not found." });
+  const raceDir = path.join(getDataDir(), raceName);
+  if (!fs.existsSync(raceDir)) {
+    return res.status(404).json({ error: "Race directory not found." });
   }
   const { startnummer, typ, timestamp, exactMs } = req.body;
   if (!startnummer || !typ) {
-    return res.status(400).json({ error: "Startnummer and typ to be specified." });
+    return res.status(400).json({ error: "Startnummer and typ must be specified." });
   }
+
+  const filename = typ === "START" ? "startzeiten.csv" : "zielzeiten.csv";
+  const filePath = path.join(raceDir, filename);
 
   // Duplicate check for ZIEL events
   if (typ === "ZIEL") {
     try {
-      const content = fs.readFileSync(filePath, "utf8");
-      const events = parseCSV(content, ["startnummer", "typ", "timestamp", "exactMs"]);
-      const alreadyFinished = events.some(
-        (e: any) => e.startnummer === String(startnummer) && e.typ === "ZIEL"
-      );
-      if (alreadyFinished) {
-        return res.status(409).json({ error: `Startnummer ${startnummer} hat bereits eine Zielzeit in diesem Rennen.` });
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, "utf8");
+        const events = parseCSV(content, ["startnummer", "vorname", "nachname", "jahrgang", "zielzeit", "exactMs"]);
+        const alreadyFinished = events.some(
+          (e: any) => String(e.startnummer) === String(startnummer)
+        );
+        if (alreadyFinished) {
+          return res.status(409).json({ error: `Startnummer ${startnummer} hat bereits eine Zielzeit in diesem Rennen.` });
+        }
       }
     } catch (e) {
       // Continue anyway
@@ -798,8 +959,25 @@ app.post("/api/races/:raceName/event", (req, res) => {
   }
 
   try {
+    // Fetch registration details
+    const regFile = getRegistrationsFile();
+    let vorname = "";
+    let name = "";
+    let geburtsdatum = "";
+    if (fs.existsSync(regFile)) {
+      const regContent = fs.readFileSync(regFile, "utf8");
+      const regs = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "wohnort", "gender", "club"]);
+      const athlete = regs.find((r: any) => String(r.startnummer) === String(startnummer));
+      if (athlete) {
+        vorname = athlete.vorname || "";
+        name = athlete.name || "";
+        geburtsdatum = athlete.geburtsdatum || "";
+      }
+    }
+
     const ms = exactMs || Date.now();
-    const line = `${escapeCSVField(startnummer)};${escapeCSVField(typ)};${escapeCSVField(timestamp || "")};${ms}\r\n`;
+    const line = `${escapeCSVField(startnummer)};${escapeCSVField(vorname)};${escapeCSVField(name)};${escapeCSVField(geburtsdatum)};${escapeCSVField(timestamp || "")};${ms}\r\n`;
+    
     fs.appendFileSync(filePath, line, "utf8");
     res.json({ success: true, timestamp, exactMs: ms });
   } catch (err) {
@@ -812,23 +990,58 @@ app.post("/api/races/:raceName/events-bulk", (req, res) => {
     return res.status(400).json({ error: "App not configured yet." });
   }
   const raceName = req.params.raceName;
-  const racesDir = getRacesDir();
-  const filePath = path.join(racesDir, `${raceName}.csv`);
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "Race file not found." });
+  const raceDir = path.join(getDataDir(), raceName);
+  if (!fs.existsSync(raceDir)) {
+    return res.status(404).json({ error: "Race directory not found." });
   }
   const { events } = req.body;
   if (!Array.isArray(events)) {
     return res.status(400).json({ error: "Events array is required." });
   }
   try {
+    // Fetch registrations once for bulk lookup
+    const regFile = getRegistrationsFile();
+    let registrations: any[] = [];
+    if (fs.existsSync(regFile)) {
+      const regContent = fs.readFileSync(regFile, "utf8");
+      registrations = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "wohnort", "gender", "club"]);
+    }
+
     const now = Date.now();
-    let fileContent = "";
+    let startLines = "";
+    let finishLines = "";
+
     events.forEach((evt) => {
+      const bib = evt.startnummer;
+      const typ = evt.typ;
+      if (!bib || !typ) return;
+
+      const athlete = registrations.find((r: any) => String(r.startnummer) === String(bib));
+      const vorname = athlete ? athlete.vorname : "";
+      const name = athlete ? athlete.name : "";
+      const geburtsdatum = athlete ? athlete.geburtsdatum : "";
+
       const ms = evt.exactMs || now;
-      fileContent += `${escapeCSVField(evt.startnummer)};${escapeCSVField(evt.typ)};${escapeCSVField(evt.timestamp || "")};${ms}\r\n`;
+      const timestamp = evt.timestamp || "";
+
+      const line = `${escapeCSVField(bib)};${escapeCSVField(vorname)};${escapeCSVField(name)};${escapeCSVField(geburtsdatum)};${escapeCSVField(timestamp)};${ms}\r\n`;
+
+      if (typ === "START") {
+        startLines += line;
+      } else {
+        finishLines += line;
+      }
     });
-    fs.appendFileSync(filePath, fileContent, "utf8");
+
+    if (startLines) {
+      const startFile = path.join(raceDir, "startzeiten.csv");
+      fs.appendFileSync(startFile, startLines, "utf8");
+    }
+    if (finishLines) {
+      const finishFile = path.join(raceDir, "zielzeiten.csv");
+      fs.appendFileSync(finishFile, finishLines, "utf8");
+    }
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to bulk save race events." });
@@ -843,14 +1056,20 @@ app.post("/api/reset", (req, res) => {
   try {
     const tagsFile = getTagsFile();
     const registrationsFile = getRegistrationsFile();
-    const racesDir = getRacesDir();
+    const dataDir = getDataDir();
 
     if (fs.existsSync(tagsFile)) fs.unlinkSync(tagsFile);
     if (fs.existsSync(registrationsFile)) fs.unlinkSync(registrationsFile);
-    if (fs.existsSync(racesDir)) {
-      const files = fs.readdirSync(racesDir);
-      files.forEach((f) => {
-        fs.unlinkSync(path.join(racesDir, f));
+    
+    if (fs.existsSync(dataDir)) {
+      const items = fs.readdirSync(dataDir);
+      items.forEach((item) => {
+        const fullPath = path.join(dataDir, item);
+        if (fs.statSync(fullPath).isDirectory()) {
+          if (![".git", "node_modules"].includes(item)) {
+            fs.rmSync(fullPath, { recursive: true, force: true });
+          }
+        }
       });
     }
     // Seed new files
