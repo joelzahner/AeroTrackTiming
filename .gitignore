@@ -8,3 +8,19 @@ coverage/
 !.env.example
 dist-desktop/
 assets.zip
+
+# .NET Build and Temp files
+[Oo]bj/
+[Bb]in/**/*
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.pdb
+
+# Allow specific compiled Reader binaries/configs needed by the app server
+!/Reader/ReaderBridge/bin/**/*.exe
+!/Reader/ReaderBridge/bin/**/*.dll
+!/Reader/ReaderBridge/bin/**/*.config
+!/Reader/TagReaderCore/bin/**/*.dll
