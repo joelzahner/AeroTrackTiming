@@ -21,6 +21,7 @@
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
@@ -51,7 +52,8 @@
       "electron.cjs",
       "package.json",
       "icon.png",
-      "icon.ico"
+      "icon.ico",
+      "Rangliste_Vorlage.xlsx"
     ],
     "win": {
       "target": "nsis",

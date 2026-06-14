@@ -43,3 +43,11 @@ export interface FinisherResult {
   elapsedMs: number;
   diffLabel: string; // e.g. "+00:00:00.945" or "-"
 }
+
+export interface CategoryConfig {
+  name: string;
+  minYear: number;
+  maxYear: number;
+  club: 'Ja' | 'Nein';
+  gender: 'M' | 'W' | 'Alle';
+}

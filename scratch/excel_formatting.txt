@@ -1,0 +1,103 @@
+Column widths:
+Col A: width=7.28515625
+Col B: width=13.28515625
+Col C: width=13.0
+Col D: width=10.140625
+Col E: width=13.28515625
+Col F: width=13.0
+Col G: width=12.85546875
+Col H: width=13.85546875
+
+Row heights:
+Row 1: height=15.75
+Row 2: height=16.5
+Row 3: height=15.75
+Row 4: height=None
+Row 5: height=15.75
+Row 6: height=16.5
+Row 7: height=15.75
+Row 8: height=None
+Row 9: height=15.75
+Row 10: height=16.5
+Row 11: height=15.75
+Row 12: height=None
+Row 13: height=15.75
+Row 14: height=16.5
+Row 15: height=15.75
+Row 16: height=None
+Row 17: height=15.75
+Row 18: height=16.5
+
+Cell styling details:
+Cell A1: value='Kategorie 1' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell B1: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell C1: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell D1: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell E1: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell F1: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell G1: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell H1: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell A2: value='Rang' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell B2: value='Vorname' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell C2: value='Nachname' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell D2: value='Jahrgang' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell E2: value='Wohnort' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell F2: value='Rennzeit' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell G2: value='Rückstand' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell H2: value='⌀km/h' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell A3: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell B3: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell C3: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell D3: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell E3: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell F3: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell G3: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell H3: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell A4: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell B4: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell C4: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell D4: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell E4: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell F4: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell G4: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell H4: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell A5: value='Kategorie 2' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell B5: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell C5: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell D5: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell E5: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell F5: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell G5: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell H5: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell A6: value='Rang' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell B6: value='Vorname' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell C6: value='Nachname' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell D6: value='Jahrgang' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell E6: value='Wohnort' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell F6: value='Rennzeit' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell G6: value='Rückstand' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell H6: value='⌀km/h' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell A7: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell B7: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell C7: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell D7: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell E7: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell F7: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell G7: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell H7: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell A8: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell B8: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell C8: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell D8: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell E8: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell F8: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell G8: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell H8: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | align:(h=left) | num_fmt=General
+Cell A9: value='Kategorie 3' | font:(name=Calibri,size=11.0,bold) | align:(h=left) | num_fmt=General
+Cell B9: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell C9: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell D9: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell E9: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell F9: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell G9: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General
+Cell H9: font:(name=Calibri,size=11.0,color=Values must be of type <class 'str'>) | num_fmt=General

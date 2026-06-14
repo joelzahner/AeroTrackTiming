@@ -4,6 +4,7 @@ import fs from "fs";
 import { exec, spawn, ChildProcess } from "child_process";
 import { createServer as createViteServer } from "vite";
 import { fileURLToPath } from "url";
+import ExcelJS from "exceljs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,6 +70,10 @@ function getTagsFile(): string {
 
 function getRegistrationsFile(): string {
   return path.join(getDataDir(), "registrations.csv");
+}
+
+function getRacesMetadataFile(): string {
+  return path.join(getDataDir(), "races_metadata.json");
 }
 
 // Helper to parse "HH:MM:SS.hh" into milliseconds from the start of the day
@@ -840,6 +845,53 @@ app.get("/api/races", (req, res) => {
   }
 });
 
+// Race metadata endpoint to get distances
+app.get("/api/races-metadata", (req, res) => {
+  if (!activeConfig.isConfigured) {
+    return res.json({});
+  }
+  try {
+    const metadataFile = getRacesMetadataFile();
+    if (!fs.existsSync(metadataFile)) {
+      return res.json({});
+    }
+    const data = JSON.parse(fs.readFileSync(metadataFile, "utf8"));
+    res.json(data);
+  } catch (err) {
+    console.error("Failed to read races metadata:", err);
+    res.status(500).json({ error: "Failed to read races metadata." });
+  }
+});
+
+// Race metadata endpoint to update distance
+app.post("/api/races/:raceName/metadata", (req, res) => {
+  if (!activeConfig.isConfigured) {
+    return res.status(400).json({ error: "App not configured yet." });
+  }
+  const raceName = req.params.raceName;
+  const { distance } = req.body;
+  try {
+    const metadataFile = getRacesMetadataFile();
+    let data: Record<string, any> = {};
+    if (fs.existsSync(metadataFile)) {
+      try {
+        data = JSON.parse(fs.readFileSync(metadataFile, "utf8"));
+      } catch (e) {
+        console.error("Failed to parse races metadata json, resetting:", e);
+      }
+    }
+    if (!data[raceName]) {
+      data[raceName] = {};
+    }
+    data[raceName].distance = Number(distance) || 0;
+    fs.writeFileSync(metadataFile, JSON.stringify(data, null, 2), "utf8");
+    res.json({ success: true, metadata: data[raceName] });
+  } catch (err) {
+    console.error("Failed to save race metadata:", err);
+    res.status(500).json({ error: "Failed to save race metadata." });
+  }
+});
+
 app.post("/api/races", (req, res) => {
   if (!activeConfig.isConfigured) {
     return res.status(400).json({ error: "App not configured yet." });
@@ -1045,6 +1097,650 @@ app.post("/api/races/:raceName/events-bulk", (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to bulk save race events." });
+  }
+});
+
+// Helper function to format elapsed time
+function formatElapsed(delta: number): string {
+  if (delta === Infinity || isNaN(delta)) return "DNF";
+  const diffMs = delta % 1000;
+  const totalSecs = Math.floor(delta / 1000);
+  const secs = totalSecs % 60;
+  const totalMins = Math.floor(totalSecs / 60);
+  const mins = totalMins % 60;
+  const hrs = Math.floor(totalMins / 60);
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const msPad = (n: number) => String(Math.floor(n / 10)).padStart(2, '0');
+
+  if (hrs > 0) {
+    return `${hrs}:${pad(mins)}:${pad(secs)}.${msPad(diffMs)}`;
+  } else {
+    return `${pad(mins)}:${pad(secs)}.${msPad(diffMs)}`;
+  }
+}
+
+// Helper function to format difference/gap
+function formatDiff(diffMs: number): string {
+  if (diffMs <= 0 || isNaN(diffMs)) return "-";
+  const totalSecs = Math.floor(diffMs / 1000);
+  const secs = totalSecs % 60;
+  const mins = Math.floor(totalSecs / 60);
+  const ms = diffMs % 1000;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const msPad = (n: number) => String(Math.floor(n / 10)).padStart(2, '0');
+  
+  if (mins > 0) {
+    return `+${mins}:${pad(secs)}.${msPad(ms)}`;
+  } else {
+    return `+${secs}.${msPad(ms)}`;
+  }
+}
+
+// Helper function to format distance
+function formatDistance(meters: number): string {
+  if (!meters) return "-";
+  if (meters < 10000) {
+    return `${meters} m`;
+  } else {
+    const km = meters / 1000;
+    return `${Number(km.toFixed(2))} km`;
+  }
+}
+
+// Helper to get category gender with fallback for legacy categories
+function getCategoryGender(cat: any): 'M' | 'W' | 'Alle' {
+  if (cat && (cat.gender === 'M' || cat.gender === 'W' || cat.gender === 'Alle')) {
+    return cat.gender;
+  }
+  // Guess from name
+  const nameLower = (cat && cat.name || '').toLowerCase();
+  if (
+    nameLower.includes('frau') ||
+    nameLower.includes('damen') ||
+    nameLower.includes('mädchen') ||
+    nameLower.includes('girl') ||
+    nameLower.includes('women') ||
+    nameLower.includes('woman') ||
+    nameLower.includes('female') ||
+    nameLower.includes('lady') ||
+    nameLower.includes('ladies')
+  ) {
+    return 'W';
+  }
+  if (
+    nameLower.includes('männer') ||
+    nameLower.includes('maenner') ||
+    nameLower.includes('herren') ||
+    nameLower.includes('knaben') ||
+    nameLower.includes('boy') ||
+    nameLower.includes('men') ||
+    nameLower.includes('man') ||
+    nameLower.includes('male')
+  ) {
+    return 'M';
+  }
+  return 'Alle';
+}
+
+function applyCellStyles(destCell: any, srcStyle: any) {
+  if (!srcStyle) return;
+  if (srcStyle.font) destCell.font = srcStyle.font;
+  if (srcStyle.fill) destCell.fill = srcStyle.fill;
+  if (srcStyle.border) destCell.border = srcStyle.border;
+  if (srcStyle.alignment) destCell.alignment = srcStyle.alignment;
+  if (srcStyle.numFmt) destCell.numFmt = srcStyle.numFmt;
+}
+
+// Find template workbook path in development and production (packaged Electron)
+const getTemplatePath = (): string => {
+  const candidates = [
+    path.join(__dirname, "Rangliste_Vorlage.xlsx"),
+    path.join(__dirname, "..", "Rangliste_Vorlage.xlsx"),
+    path.join(process.cwd(), "Rangliste_Vorlage.xlsx")
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return candidates[0]; // fallback
+};
+
+// Excel Ranglisten Export
+app.post("/api/races/export-excel", async (req, res) => {
+  if (!activeConfig.isConfigured) {
+    return res.status(400).json({ error: "App not configured yet." });
+  }
+
+  const { selectedRaces, categories } = req.body;
+  if (!Array.isArray(selectedRaces) || selectedRaces.length === 0) {
+    return res.status(400).json({ error: "At least one race must be selected." });
+  }
+
+  const activeCategories = Array.isArray(categories) && categories.length > 0 
+    ? categories 
+    : [{ name: "Alle", minYear: 1900, maxYear: 2100, club: "Alle" }];
+
+  try {
+    // 1. Fetch Registrations
+    const regFile = getRegistrationsFile();
+    let registrations: any[] = [];
+    if (fs.existsSync(regFile)) {
+      const regContent = fs.readFileSync(regFile, "utf8");
+      registrations = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "wohnort", "gender", "club"]);
+    }
+
+    // 2. Fetch Distances metadata
+    const metadataFile = getRacesMetadataFile();
+    let raceDistances: Record<string, number> = {};
+    if (fs.existsSync(metadataFile)) {
+      try {
+        const metData = JSON.parse(fs.readFileSync(metadataFile, "utf8"));
+        Object.keys(metData).forEach(rName => {
+          raceDistances[rName] = Number(metData[rName].distance) || 0;
+        });
+      } catch (e) {
+        console.error("Failed to parse races metadata in export:", e);
+      }
+    }
+
+    // 3. Process Standings for each Selected Race
+    const raceStandings: Record<string, any[]> = {};
+    const raceStandingsCategorized: Record<string, Record<string, any[]>> = {};
+
+    selectedRaces.forEach(raceName => {
+      const raceDir = path.join(getDataDir(), raceName);
+      const startFile = path.join(raceDir, "startzeiten.csv");
+      const finishFile = path.join(raceDir, "zielzeiten.csv");
+
+      const events: any[] = [];
+      if (fs.existsSync(startFile)) {
+        const startContent = fs.readFileSync(startFile, "utf8");
+        const startRows = parseCSV(startContent, ["startnummer", "vorname", "nachname", "jahrgang", "startzeit", "exactMs"]);
+        startRows.forEach(row => {
+          if (row.startnummer) {
+            events.push({
+              startnummer: String(row.startnummer),
+              typ: "START",
+              timestamp: row.startzeit || "",
+              exactMs: Number(row.exactMs) || parseTimeToMs(row.startzeit)
+            });
+          }
+        });
+      }
+
+      if (fs.existsSync(finishFile)) {
+        const finishContent = fs.readFileSync(finishFile, "utf8");
+        const finishRows = parseCSV(finishContent, ["startnummer", "vorname", "nachname", "jahrgang", "zielzeit", "exactMs"]);
+        finishRows.forEach(row => {
+          if (row.startnummer) {
+            events.push({
+              startnummer: String(row.startnummer),
+              typ: "ZIEL",
+              timestamp: row.zielzeit || "",
+              exactMs: Number(row.exactMs) || parseTimeToMs(row.zielzeit)
+            });
+          }
+        });
+      }
+
+      const bibs = Array.from(new Set(events.map(e => e.startnummer)));
+      const list: any[] = [];
+
+      bibs.forEach(bib => {
+        const startEvt = events.filter(e => e.startnummer === bib && e.typ === 'START').sort((a,b) => Number(a.exactMs) - Number(b.exactMs))[0];
+        const finishEvts = events.filter(e => e.startnummer === bib && e.typ === 'ZIEL').sort((a,b) => Number(a.exactMs) - Number(b.exactMs));
+        const finishEvt = finishEvts[finishEvts.length - 1];
+
+        const athlete = registrations.find(r => String(r.startnummer) === String(bib));
+        
+        const startMs = startEvt ? Number(startEvt.exactMs) : undefined;
+        const finishMs = finishEvt ? Number(finishEvt.exactMs) : undefined;
+        const elapsedMs = (startMs && finishMs) ? (finishMs - startMs) : Infinity;
+
+        list.push({
+          startnummer: bib,
+          name: athlete ? athlete.name : 'Gastschreiber',
+          vorname: athlete ? athlete.vorname : `#${bib}`,
+          gender: athlete ? athlete.gender : 'M',
+          geburtsdatum: athlete ? String(athlete.geburtsdatum) : '1990',
+          wohnort: athlete ? athlete.wohnort : 'Extern',
+          club: athlete ? athlete.club : false,
+          elapsedMs,
+          elapsedLabel: elapsedMs === Infinity ? "DNF" : formatElapsed(elapsedMs)
+        });
+      });
+
+      raceStandings[raceName] = list;
+      raceStandingsCategorized[raceName] = {};
+
+      // Categorize and Rank
+      activeCategories.forEach(cat => {
+        const filtered = list.filter(runner => {
+          const birthYear = parseInt(runner.geburtsdatum.split('-')[0]) || 1990;
+          if (birthYear < cat.minYear || birthYear > cat.maxYear) return false;
+          
+          if (cat.club === "Ja" && !runner.club) return false;
+          if (cat.club === "Nein" && runner.club) return false;
+          
+          const catGender = getCategoryGender(cat);
+          if (catGender !== "Alle" && runner.gender !== catGender) return false;
+
+          return true;
+        });
+
+        const finishers = filtered.filter(r => r.elapsedMs !== Infinity).sort((a, b) => a.elapsedMs - b.elapsedMs);
+        const dnfs = filtered.filter(r => r.elapsedMs === Infinity);
+
+        const distance = raceDistances[raceName] || 0;
+
+        finishers.forEach((runner, idx) => {
+          runner.pos = idx + 1;
+          runner.diffLabel = idx === 0 ? "-" : formatDiff(runner.elapsedMs - finishers[0].elapsedMs);
+          runner.speed = distance > 0 ? ((distance * 3600) / runner.elapsedMs).toFixed(2) : "-";
+        });
+
+        dnfs.forEach(runner => {
+          runner.pos = undefined;
+          runner.diffLabel = "-";
+          runner.speed = "-";
+        });
+
+        raceStandingsCategorized[raceName][cat.name] = [...finishers, ...dnfs];
+      });
+    });
+
+    // 4. Process Gesamtwertung (Overall Ranking)
+    // Gather all bib numbers present in selected races or registrations
+    const bibsInSelectedRaces = new Set<string>();
+    selectedRaces.forEach(rName => {
+      raceStandings[rName].forEach(s => bibsInSelectedRaces.add(s.startnummer));
+    });
+    registrations.forEach(r => bibsInSelectedRaces.add(String(r.startnummer)));
+    
+    const overallList: any[] = [];
+    bibsInSelectedRaces.forEach(bib => {
+      const athlete = registrations.find(r => String(r.startnummer) === String(bib));
+      
+      let totalMs = 0;
+      let dnfAny = false;
+      const raceTimes = selectedRaces.map(rName => {
+        const raceStanding = raceStandings[rName].find(s => String(s.startnummer) === String(bib));
+        const ms = raceStanding ? raceStanding.elapsedMs : Infinity;
+        if (ms === Infinity) dnfAny = true;
+        return {
+          raceName: rName,
+          elapsedMs: ms,
+          elapsedLabel: ms === Infinity ? "DNF" : formatElapsed(ms)
+        };
+      });
+
+      if (dnfAny) {
+        totalMs = Infinity;
+      } else {
+        totalMs = raceTimes.reduce((sum, rt) => sum + rt.elapsedMs, 0);
+      }
+
+      overallList.push({
+        startnummer: bib,
+        name: athlete ? athlete.name : 'Gastschreiber',
+        vorname: athlete ? athlete.vorname : `#${bib}`,
+        gender: athlete ? athlete.gender : 'M',
+        geburtsdatum: athlete ? String(athlete.geburtsdatum) : '1990',
+        wohnort: athlete ? athlete.wohnort : 'Extern',
+        club: athlete ? athlete.club : false,
+        raceTimes,
+        totalMs,
+        totalLabel: totalMs === Infinity ? "DNF" : formatElapsed(totalMs)
+      });
+    });
+
+    const overallStandingsCategorized: Record<string, any[]> = {};
+    activeCategories.forEach(cat => {
+      const filtered = overallList.filter(runner => {
+        const birthYear = parseInt(runner.geburtsdatum.split('-')[0]) || 1990;
+        if (birthYear < cat.minYear || birthYear > cat.maxYear) return false;
+
+        if (cat.club === "Ja" && !runner.club) return false;
+        if (cat.club === "Nein" && runner.club) return false;
+        
+        const catGender = getCategoryGender(cat);
+        if (catGender !== "Alle" && runner.gender !== catGender) return false;
+
+        return true;
+      });
+
+      const finishers = filtered.filter(r => r.totalMs !== Infinity).sort((a, b) => a.totalMs - b.totalMs);
+      const dnfs = filtered.filter(r => r.totalMs === Infinity);
+
+      finishers.forEach((runner, idx) => {
+        runner.pos = idx + 1;
+        runner.diffLabel = idx === 0 ? "-" : formatDiff(runner.totalMs - finishers[0].totalMs);
+      });
+
+      dnfs.forEach(runner => {
+        runner.pos = undefined;
+        runner.diffLabel = "-";
+      });
+
+      overallStandingsCategorized[cat.name] = [...finishers, ...dnfs];
+    });
+
+    // 5. Open Excel Template and Extract Styles
+    const templatePath = getTemplatePath();
+    if (!fs.existsSync(templatePath)) {
+      return res.status(500).json({ error: `Excel-Vorlage '${templatePath}' nicht gefunden.` });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(templatePath);
+
+    // Extract style elements from template sheets
+    const r1Sheet = workbook.getWorksheet("Rennen 1");
+    if (!r1Sheet) {
+      return res.status(500).json({ error: "Vorlage-Sheet 'Rennen 1' fehlt." });
+    }
+
+    const templateCatTitleCell = r1Sheet.getCell("A1");
+    const catTitleStyle = {
+      font: templateCatTitleCell.font,
+      fill: templateCatTitleCell.fill,
+      border: templateCatTitleCell.border,
+      alignment: templateCatTitleCell.alignment
+    };
+
+    const headerStyles: any[] = [];
+    for (let col = 1; col <= 8; col++) {
+      const cell = r1Sheet.getCell(2, col);
+      headerStyles.push({
+        font: cell.font,
+        fill: cell.fill,
+        border: cell.border,
+        alignment: cell.alignment
+      });
+    }
+
+    const dataStyles: any[] = [];
+    for (let col = 1; col <= 8; col++) {
+      const cell = r1Sheet.getCell(3, col);
+      dataStyles.push({
+        font: cell.font,
+        fill: cell.fill,
+        border: cell.border,
+        alignment: cell.alignment
+      });
+    }
+
+    const r1ColWidths: number[] = [];
+    for (let col = 1; col <= 8; col++) {
+      r1ColWidths.push(r1Sheet.getColumn(col).width || 13);
+    }
+
+    // Extract styles from template Gesamtwertung sheet
+    const gwSheet = workbook.getWorksheet("Gesamtwertung");
+    if (!gwSheet) {
+      return res.status(500).json({ error: "Vorlage-Sheet 'Gesamtwertung' fehlt." });
+    }
+
+    const templateGwCatTitleCell = gwSheet.getCell("A1");
+    const gwCatTitleStyle = {
+      font: templateGwCatTitleCell.font,
+      fill: templateGwCatTitleCell.fill,
+      border: templateGwCatTitleCell.border,
+      alignment: templateGwCatTitleCell.alignment
+    };
+
+    const gwHeaderStyles: any[] = [];
+    for (let col = 1; col <= 8; col++) {
+      const cell = gwSheet.getCell(2, col);
+      gwHeaderStyles.push({
+        font: cell.font,
+        fill: cell.fill,
+        border: cell.border,
+        alignment: cell.alignment
+      });
+    }
+
+    const gwDataStyles: any[] = [];
+    for (let col = 1; col <= 8; col++) {
+      const cell = gwSheet.getCell(3, col);
+      gwDataStyles.push({
+        font: cell.font,
+        fill: cell.fill,
+        border: cell.border,
+        alignment: cell.alignment
+      });
+    }
+
+    const gwColWidths: number[] = [];
+    for (let col = 1; col <= 8; col++) {
+      gwColWidths.push(gwSheet.getColumn(col).width || 13);
+    }
+
+    // 6. Generate New Sheets for Selected Races
+    selectedRaces.forEach(raceName => {
+      let safeName = raceName.replace(/[\\\/:\*\?\[\]]/g, "_");
+      if (safeName.length > 31) safeName = safeName.slice(0, 31);
+      
+      let nameCount = 1;
+      let finalName = safeName;
+      while (workbook.getWorksheet(finalName)) {
+        finalName = `${safeName.slice(0, 27)}_${nameCount++}`;
+      }
+
+      const ws = workbook.addWorksheet(finalName);
+      ws.columns = r1ColWidths.map((w, idx) => ({
+        key: `col_${idx + 1}`,
+        width: w
+      }));
+
+      let currentRow = 1;
+
+      activeCategories.forEach((cat) => {
+        // Merge category title row (A to G for first row to leave H for distance, otherwise A to H)
+        if (currentRow === 1) {
+          ws.mergeCells(1, 1, 1, 7);
+          const titleCell = ws.getCell(1, 1);
+          titleCell.value = cat.name;
+
+          const distanceCell = ws.getCell(1, 8);
+          const distMeters = raceDistances[raceName] || 0;
+          distanceCell.value = distMeters > 0 ? `Distanz: ${formatDistance(distMeters)}` : "Distanz: -";
+
+          // Apply styling to columns 1-7
+          for (let col = 1; col <= 7; col++) {
+            applyCellStyles(ws.getCell(1, col), catTitleStyle);
+          }
+          // Apply styling and right alignment to distance cell
+          applyCellStyles(distanceCell, catTitleStyle);
+          distanceCell.alignment = { horizontal: "right", vertical: "middle" };
+        } else {
+          ws.mergeCells(currentRow, 1, currentRow, 8);
+          const titleCell = ws.getCell(currentRow, 1);
+          titleCell.value = cat.name;
+
+          for (let col = 1; col <= 8; col++) {
+            applyCellStyles(ws.getCell(currentRow, col), catTitleStyle);
+          }
+        }
+        ws.getRow(currentRow).height = 15.75;
+        currentRow++;
+
+        const headers = ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Rennzeit', 'Rückstand', '⌀km/h'];
+        headers.forEach((h, colIdx) => {
+          const cell = ws.getCell(currentRow, colIdx + 1);
+          cell.value = h;
+          applyCellStyles(cell, headerStyles[colIdx] || headerStyles[0]);
+        });
+        ws.getRow(currentRow).height = 16.5;
+        currentRow++;
+
+        const catRunners = raceStandingsCategorized[raceName][cat.name] || [];
+        if (catRunners.length === 0) {
+          const cell = ws.getCell(currentRow, 1);
+          cell.value = "Keine Einträge";
+          cell.font = { name: "Calibri", size: 11, italic: true };
+          ws.getRow(currentRow).height = 15.75;
+          currentRow++;
+        } else {
+          catRunners.forEach(runner => {
+            const rowData = [
+              runner.pos || "-",
+              runner.vorname,
+              runner.name,
+              runner.geburtsdatum,
+              runner.wohnort,
+              runner.elapsedLabel,
+              runner.diffLabel,
+              runner.speed === "-" ? "-" : Number(runner.speed)
+            ];
+
+            rowData.forEach((val, colIdx) => {
+              const cell = ws.getCell(currentRow, colIdx + 1);
+              cell.value = val;
+              applyCellStyles(cell, dataStyles[colIdx] || dataStyles[0]);
+            });
+            ws.getRow(currentRow).height = 15.75;
+            currentRow++;
+          });
+        }
+        ws.getRow(currentRow).height = 15.75;
+        currentRow++; // Spacer row
+      });
+    });
+
+    // 7. Generate Gesamtwertung sheet
+    const wsGw = workbook.addWorksheet("Gesamtwertung_Neu");
+    const columnsDef = [
+      { width: gwColWidths[0] }, // Rang
+      { width: gwColWidths[1] }, // Vorname
+      { width: gwColWidths[2] }, // Nachname
+      { width: gwColWidths[3] }, // Jahrgang
+      { width: gwColWidths[4] }  // Wohnort
+    ];
+    selectedRaces.forEach(() => {
+      columnsDef.push({ width: gwColWidths[5] }); // Zeit [Race Name]
+    });
+    columnsDef.push({ width: gwColWidths[6] }); // Gesamtzeit
+    columnsDef.push({ width: gwColWidths[7] }); // Rückstand
+    wsGw.columns = columnsDef;
+
+    let gwCurrentRow = 1;
+
+    activeCategories.forEach((cat) => {
+      const totalCols = 5 + selectedRaces.length + 2;
+      wsGw.mergeCells(gwCurrentRow, 1, gwCurrentRow, totalCols);
+      
+      const titleCell = wsGw.getCell(gwCurrentRow, 1);
+      titleCell.value = cat.name;
+
+      for (let col = 1; col <= totalCols; col++) {
+        applyCellStyles(wsGw.getCell(gwCurrentRow, col), gwCatTitleStyle);
+      }
+      wsGw.getRow(gwCurrentRow).height = 15.75;
+      gwCurrentRow++;
+
+      const headers = ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort'];
+      selectedRaces.forEach(r => headers.push(`Zeit ${r}`));
+      headers.push('Gesamtzeit', 'Rückstand');
+
+      headers.forEach((h, colIdx) => {
+        const cell = wsGw.getCell(gwCurrentRow, colIdx + 1);
+        cell.value = h;
+        
+        let styleTemplate;
+        if (colIdx < 5) {
+          styleTemplate = gwHeaderStyles[colIdx];
+        } else if (colIdx < 5 + selectedRaces.length) {
+          styleTemplate = gwHeaderStyles[5]; // Zeit Rennen 1 style
+        } else if (colIdx === 5 + selectedRaces.length) {
+          styleTemplate = gwHeaderStyles[6]; // Gesamtzeit style
+        } else {
+          styleTemplate = gwHeaderStyles[7]; // Rückstand style
+        }
+        applyCellStyles(cell, styleTemplate || gwHeaderStyles[0]);
+      });
+      wsGw.getRow(gwCurrentRow).height = 16.5;
+      gwCurrentRow++;
+
+      const catRunners = overallStandingsCategorized[cat.name] || [];
+      if (catRunners.length === 0) {
+        const cell = wsGw.getCell(gwCurrentRow, 1);
+        cell.value = "Keine Einträge";
+        cell.font = { name: "Calibri", size: 11, italic: true };
+        wsGw.getRow(gwCurrentRow).height = 15.75;
+        gwCurrentRow++;
+      } else {
+        catRunners.forEach(runner => {
+          const rowData = [
+            runner.pos || "-",
+            runner.vorname,
+            runner.name,
+            runner.geburtsdatum,
+            runner.wohnort
+          ];
+          runner.raceTimes.forEach(rt => {
+            rowData.push(rt.elapsedLabel);
+          });
+          rowData.push(runner.totalLabel);
+          rowData.push(runner.diffLabel);
+
+          rowData.forEach((val, colIdx) => {
+            const cell = wsGw.getCell(gwCurrentRow, colIdx + 1);
+            cell.value = val;
+            
+            let styleTemplate;
+            if (colIdx < 5) {
+              styleTemplate = gwDataStyles[colIdx];
+            } else if (colIdx < 5 + selectedRaces.length) {
+              styleTemplate = gwDataStyles[5];
+            } else if (colIdx === 5 + selectedRaces.length) {
+              styleTemplate = gwDataStyles[6];
+            } else {
+              styleTemplate = gwDataStyles[7];
+            }
+            applyCellStyles(cell, styleTemplate || gwDataStyles[0]);
+          });
+          wsGw.getRow(gwCurrentRow).height = 15.75;
+          gwCurrentRow++;
+        });
+      }
+      wsGw.getRow(gwCurrentRow).height = 15.75;
+      gwCurrentRow++; // Spacer row
+    });
+
+    // 8. Delete Original Template Sheets
+    const originalSheets = ["Rennen 1", "Rennen 2", "Gesamtwertung"];
+    originalSheets.forEach(sName => {
+      const sheet = workbook.getWorksheet(sName);
+      if (sheet) {
+        workbook.removeWorksheet(sName);
+      }
+    });
+
+    // Rename Gesamtwertung_Neu to Gesamtwertung
+    const finalGwSheet = workbook.getWorksheet("Gesamtwertung_Neu");
+    if (finalGwSheet) {
+      finalGwSheet.name = "Gesamtwertung";
+    }
+
+    // 9. Send Excel File to Client
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=rangliste_export.xlsx`
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (err: any) {
+    console.error("Excel generation failed:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: `Fehler beim Erstellen der Excel-Datei: ${err.message}` });
+    }
   }
 });
 

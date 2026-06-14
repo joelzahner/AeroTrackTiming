@@ -1,0 +1,40 @@
+Sheet names: ['Rennen 1', 'Rennen 2', 'Gesamtwertung']
+
+--- Sheet: Rennen 1 ---
+Dimensions: A1:H18
+Row  1: ['Kategorie 1', None, None, None, None, None, None, None, None, None, None, None]
+Row  2: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Rennzeit', 'Rückstand', '⌀km/h', None, None, None, None]
+Row  5: ['Kategorie 2', None, None, None, None, None, None, None, None, None, None, None]
+Row  6: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Rennzeit', 'Rückstand', '⌀km/h', None, None, None, None]
+Row  9: ['Kategorie 3', None, None, None, None, None, None, None, None, None, None, None]
+Row 10: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Rennzeit', 'Rückstand', '⌀km/h', None, None, None, None]
+Row 13: ['Kategorie 4', None, None, None, None, None, None, None, None, None, None, None]
+Row 14: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Rennzeit', 'Rückstand', '⌀km/h', None, None, None, None]
+Row 17: ['Kategorie x', None, None, None, None, None, None, None, None, None, None, None]
+Row 18: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Rennzeit', 'Rückstand', '⌀km/h', None, None, None, None]
+
+--- Sheet: Rennen 2 ---
+Dimensions: A1:H18
+Row  1: ['Kategorie 1', None, None, None, None, None, None, None, None, None, None, None]
+Row  2: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Rennzeit', 'Rückstand', '⌀km/h', None, None, None, None]
+Row  5: ['Kategorie 2', None, None, None, None, None, None, None, None, None, None, None]
+Row  6: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Rennzeit', 'Rückstand', '⌀km/h', None, None, None, None]
+Row  9: ['Kategorie 3', None, None, None, None, None, None, None, None, None, None, None]
+Row 10: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Rennzeit', 'Rückstand', '⌀km/h', None, None, None, None]
+Row 13: ['Kategorie 4', None, None, None, None, None, None, None, None, None, None, None]
+Row 14: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Rennzeit', 'Rückstand', '⌀km/h', None, None, None, None]
+Row 17: ['Kategorie x', None, None, None, None, None, None, None, None, None, None, None]
+Row 18: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Rennzeit', 'Rückstand', '⌀km/h', None, None, None, None]
+
+--- Sheet: Gesamtwertung ---
+Dimensions: A1:H18
+Row  1: ['Kategorie 1', None, None, None, None, None, None, None, None, None, None, None]
+Row  2: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Zeit Rennen 1', 'Zeit Rennen 2', 'Rückstand', None, None, None, None]
+Row  5: ['Kategorie 2', None, None, None, None, None, None, None, None, None, None, None]
+Row  6: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Zeit Rennen 1', 'Zeit Rennen 2', 'Rückstand', None, None, None, None]
+Row  9: ['Kategorie 3', None, None, None, None, None, None, None, None, None, None, None]
+Row 10: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Zeit Rennen 1', 'Zeit Rennen 2', 'Rückstand', None, None, None, None]
+Row 13: ['Kategorie 4', None, None, None, None, None, None, None, None, None, None, None]
+Row 14: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Zeit Rennen 1', 'Zeit Rennen 2', 'Rückstand', None, None, None, None]
+Row 17: ['Kategorie x', None, None, None, None, None, None, None, None, None, None, None]
+Row 18: ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Zeit Rennen 1', 'Zeit Rennen 2', 'Rückstand', None, None, None, None]

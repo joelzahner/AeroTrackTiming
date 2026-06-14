@@ -1,0 +1,213 @@
+
+Sheet: Rennen 1
+Max row: 18, Max col: 8
+Merged ranges: {<MergedCellRange A9:H9>, <MergedCellRange A1:H1>, <MergedCellRange A13:H13>, <MergedCellRange A5:H5>, <MergedCellRange A17:H17>}
+Row 1 height: 15.75
+Row 2 height: 16.5
+Row 3 height: 15.75
+Row 5 height: 15.75
+Row 6 height: 16.5
+Row 7 height: 15.75
+Row 9 height: 15.75
+Row 10 height: 16.5
+Row 11 height: 15.75
+Row 13 height: 15.75
+Row 14 height: 16.5
+Row 15 height: 15.75
+Row 17 height: 15.75
+Row 18 height: 16.5
+Col A width: 7.28515625
+Col B width: 13.28515625
+Col C width: 13.0
+Col D width: 10.140625
+Col E width: 13.28515625
+Col F width: 13.0
+Col G width: 12.85546875
+Col H width: 13.85546875
+Cell A1: value='Kategorie 1' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A2: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B2: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C2: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D2: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E2: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F2: value='Rennzeit' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G2: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H2: value='⌀km/h' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A5: value='Kategorie 2' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A6: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B6: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C6: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D6: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E6: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F6: value='Rennzeit' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G6: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H6: value='⌀km/h' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A9: value='Kategorie 3' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A10: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B10: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C10: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D10: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E10: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F10: value='Rennzeit' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G10: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H10: value='⌀km/h' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A13: value='Kategorie 4' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A14: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B14: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C14: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D14: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E14: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F14: value='Rennzeit' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G14: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H14: value='⌀km/h' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A17: value='Kategorie x' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A18: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B18: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C18: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D18: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E18: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F18: value='Rennzeit' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G18: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H18: value='⌀km/h' font:(Calibri,11.0,bold) border:(B=thick)
+
+Sheet: Rennen 2
+Max row: 18, Max col: 8
+Merged ranges: {<MergedCellRange A9:H9>, <MergedCellRange A1:H1>, <MergedCellRange A13:H13>, <MergedCellRange A5:H5>, <MergedCellRange A17:H17>}
+Row 1 height: 15.75
+Row 2 height: 16.5
+Row 3 height: 15.75
+Row 5 height: 15.75
+Row 6 height: 16.5
+Row 7 height: 15.75
+Row 9 height: 15.75
+Row 10 height: 16.5
+Row 11 height: 15.75
+Row 13 height: 15.75
+Row 14 height: 16.5
+Row 15 height: 15.75
+Row 17 height: 15.75
+Row 18 height: 16.5
+Col A width: 7.28515625
+Col B width: 13.28515625
+Col C width: 13.0
+Col D width: 10.140625
+Col E width: 13.28515625
+Col F width: 13.0
+Col G width: 12.85546875
+Col H width: 13.85546875
+Cell A1: value='Kategorie 1' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A2: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B2: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C2: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D2: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E2: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F2: value='Rennzeit' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G2: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H2: value='⌀km/h' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A5: value='Kategorie 2' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A6: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B6: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C6: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D6: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E6: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F6: value='Rennzeit' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G6: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H6: value='⌀km/h' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A9: value='Kategorie 3' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A10: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B10: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C10: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D10: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E10: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F10: value='Rennzeit' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G10: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H10: value='⌀km/h' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A13: value='Kategorie 4' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A14: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B14: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C14: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D14: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E14: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F14: value='Rennzeit' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G14: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H14: value='⌀km/h' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A17: value='Kategorie x' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A18: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B18: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C18: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D18: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E18: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F18: value='Rennzeit' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G18: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H18: value='⌀km/h' font:(Calibri,11.0,bold) border:(B=thick)
+
+Sheet: Gesamtwertung
+Max row: 18, Max col: 8
+Merged ranges: {<MergedCellRange A9:H9>, <MergedCellRange A1:H1>, <MergedCellRange A13:H13>, <MergedCellRange A5:H5>, <MergedCellRange A17:H17>}
+Row 1 height: 15.75
+Row 2 height: 16.5
+Row 3 height: 15.75
+Row 5 height: 15.75
+Row 6 height: 16.5
+Row 7 height: 15.75
+Row 9 height: 15.75
+Row 10 height: 16.5
+Row 11 height: 15.75
+Row 13 height: 15.75
+Row 14 height: 16.5
+Row 15 height: 15.75
+Row 17 height: 15.75
+Row 18 height: 16.5
+Col A width: 7.28515625
+Col B width: 13.28515625
+Col C width: 13.0
+Col D width: 10.140625
+Col E width: 13.28515625
+Col F width: 12.85546875
+Col G width: 13.0
+Col H width: 13.0
+Cell A1: value='Kategorie 1' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A2: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B2: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C2: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D2: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E2: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F2: value='Zeit Rennen 1' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G2: value='Zeit Rennen 2' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H2: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A5: value='Kategorie 2' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A6: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B6: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C6: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D6: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E6: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F6: value='Zeit Rennen 1' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G6: value='Zeit Rennen 2' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H6: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A9: value='Kategorie 3' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A10: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B10: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C10: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D10: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E10: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F10: value='Zeit Rennen 1' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G10: value='Zeit Rennen 2' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H10: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A13: value='Kategorie 4' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A14: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B14: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C14: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D14: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E14: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F14: value='Zeit Rennen 1' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G14: value='Zeit Rennen 2' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H14: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A17: value='Kategorie x' font:(Calibri,11.0,bold) border:(B=thick)
+Cell A18: value='Rang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell B18: value='Vorname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell C18: value='Nachname' font:(Calibri,11.0,bold) border:(B=thick)
+Cell D18: value='Jahrgang' font:(Calibri,11.0,bold) border:(B=thick)
+Cell E18: value='Wohnort' font:(Calibri,11.0,bold) border:(B=thick)
+Cell F18: value='Zeit Rennen 1' font:(Calibri,11.0,bold) border:(B=thick)
+Cell G18: value='Zeit Rennen 2' font:(Calibri,11.0,bold) border:(B=thick)
+Cell H18: value='Rückstand' font:(Calibri,11.0,bold) border:(B=thick)
