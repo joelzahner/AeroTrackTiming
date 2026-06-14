@@ -97,7 +97,7 @@ export default function Sidebar({
   return (
     <nav
       style={{ width: `${width}px` }}
-      className="hidden md:flex flex-col bg-[#f9f9f9] fixed left-0 top-0 h-full py-8 border-r border-[#e2e2e2] z-40 select-none"
+      className="hidden md:flex flex-col bg-[#f9f9f9] fixed left-0 top-0 h-full border-r border-[#e2e2e2] z-40 select-none"
     >
       {/* Resizing handle trigger element */}
       <div
@@ -109,118 +109,143 @@ export default function Sidebar({
         <div className="w-[1px] h-10 bg-[#cfc4c5] group-hover:bg-[#585f6c] transition-colors" />
       </div>
 
-      <div className="px-6 mb-12 text-center">
-        <h1 className="font-sans text-2xl font-black text-black tracking-tight">AeroTrackTiming</h1>
-      </div>
+      {/* Scrollable content wrapper */}
+      <div className="flex-1 flex flex-col w-full h-full overflow-y-auto custom-scrollbar pt-5 pb-8">
+        <div className="px-6 mb-6 text-center">
+          <h1 className="font-sans text-2xl font-black text-black tracking-tight">AeroTrack</h1>
+          <p className="font-mono text-xs text-[#585f6c] mt-0.5 tracking-widest uppercase">UHF RFID Engine</p>
+        </div>
 
-      <div className="flex-1 flex flex-col w-full space-y-1">
-        {menuItems.map((item) => {
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              id={`nav-tab-${item.id}`}
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex items-center space-x-3 px-6 py-4 duration-150 transition-all text-left w-full border-r-2 cursor-pointer ${
-                isActive
-                  ? 'text-black border-black bg-[#e2e2e2] font-bold'
-                  : 'text-[#4c4546] border-transparent hover:bg-[#f3f3f3]'
-              }`}
-            >
-              <span className="material-symbols-outlined shrink-0" style={{ fontVariationSettings: ` 'FILL' ${isActive ? 1 : 0}` }}>
-                {item.icon}
-              </span>
-              <span className="font-sans text-sm font-medium">{item.label}</span>
-            </button>
-          );
-        })}
-      </div>
+        <div className="flex-1 flex flex-col w-full space-y-1">
+          {menuItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                id={`nav-tab-${item.id}`}
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`flex items-center space-x-3 px-6 py-4 duration-150 transition-all text-left w-full border-r-2 cursor-pointer ${
+                  isActive
+                    ? 'text-black border-black bg-[#e2e2e2] font-bold'
+                    : 'text-[#4c4546] border-transparent hover:bg-[#f3f3f3]'
+                }`}
+              >
+                <span className="material-symbols-outlined shrink-0" style={{ fontVariationSettings: ` 'FILL' ${isActive ? 1 : 0}` }}>
+                  {item.icon}
+                </span>
+                <span className="font-sans text-sm font-medium">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
 
-      <div className="px-6 mt-auto pt-6 border-t border-[#e2e2e2] flex flex-col gap-3">
-        {/* RFID Reader Status */}
-        <div className="bg-[#f0f0f0] p-3 rounded-lg border border-[#e2e2e2] flex flex-col gap-1.5 shadow-sm">
-          <div className="flex justify-between items-center text-[#585f6c]">
-            <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[14px]">sensors</span>
-              <span className="font-mono text-[9px] uppercase tracking-wider font-semibold">UHF Reader</span>
-            </div>
-            <button
-              onClick={() => setShowReaderConfig(!showReaderConfig)}
-              title="Reader konfigurieren"
-              className="text-[#4c4546] hover:text-black transition-colors cursor-pointer flex items-center justify-center p-0.5 rounded hover:bg-neutral-200"
-            >
-              <span className="material-symbols-outlined text-[14px]">{showReaderConfig ? 'expand_less' : 'expand_more'}</span>
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${rfidStatus.connected ? 'bg-green-500 animate-pulse' : 'bg-neutral-400'}`}></span>
-            <span className="font-mono text-[10px] text-black font-medium">
-              {rfidStatus.connected ? `Verbunden (${rfidStatus.comPort})` : 'Nicht verbunden'}
-            </span>
-          </div>
-
-          {showReaderConfig && (
-            <div className="mt-1 flex flex-col gap-2 border-t border-[#e2e2e2] pt-2">
-              <div className="flex gap-1.5">
-                <input
-                  type="text"
-                  value={comPort}
-                  onChange={(e) => setComPort(e.target.value)}
-                  placeholder="COM8"
-                  className="flex-1 min-w-0 bg-white border border-[#cfc4c5] p-1.5 font-mono text-[10px] rounded text-black focus:outline-none focus:border-black"
-                />
-                {rfidStatus.connected ? (
-                  <button
-                    onClick={handleDisconnect}
-                    className="shrink-0 px-2 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-mono text-[9px] rounded cursor-pointer transition-colors"
-                  >
-                    Trennen
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleConnect}
-                    disabled={connecting}
-                    className="shrink-0 px-2 py-1 bg-black hover:bg-neutral-800 text-white font-mono text-[9px] rounded cursor-pointer transition-colors disabled:opacity-50"
-                  >
-                    {connecting ? '...' : 'Verbinden'}
-                  </button>
-                )}
+        <div className="px-6 mt-auto pt-6 border-t border-[#e2e2e2] flex flex-col gap-3">
+          {/* RFID Reader Status */}
+          <div className="bg-[#f0f0f0] p-3 rounded-lg border border-[#e2e2e2] flex flex-col gap-1.5 shadow-sm">
+            <div className="flex justify-between items-center text-[#585f6c]">
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[14px]">sensors</span>
+                <span className="font-mono text-[9px] uppercase tracking-wider font-semibold">UHF Reader</span>
               </div>
+              <button
+                onClick={() => setShowReaderConfig(!showReaderConfig)}
+                title="Reader konfigurieren"
+                className="text-[#4c4546] hover:text-black transition-colors cursor-pointer flex items-center justify-center p-0.5 rounded hover:bg-neutral-200"
+              >
+                <span className="material-symbols-outlined text-[14px]">{showReaderConfig ? 'expand_less' : 'expand_more'}</span>
+              </button>
             </div>
-          )}
-        </div>
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${rfidStatus.connected ? 'bg-green-500 animate-pulse' : 'bg-neutral-400'}`}></span>
+              <span className="font-mono text-[10px] text-black font-medium">
+                {rfidStatus.connected ? `Verbunden (${rfidStatus.comPort})` : 'Nicht verbunden'}
+              </span>
+            </div>
 
-        {/* Storage path display & config button */}
-        <div className="bg-[#f0f0f0] p-3 rounded-lg border border-[#e2e2e2] flex flex-col gap-1 shadow-sm">
-          <div className="flex justify-between items-center text-[#585f6c]">
-            <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[14px]">folder</span>
-              <span className="font-mono text-[9px] uppercase tracking-wider font-semibold">CSV-Speicherort</span>
+            {showReaderConfig && (
+              <div className="mt-1 flex flex-col gap-2 border-t border-[#e2e2e2] pt-2">
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={comPort}
+                    onChange={(e) => setComPort(e.target.value)}
+                    placeholder="COM8"
+                    className="flex-1 min-w-0 bg-white border border-[#cfc4c5] p-1.5 font-mono text-[10px] rounded text-black focus:outline-none focus:border-black"
+                  />
+                  {rfidStatus.connected ? (
+                    <button
+                      onClick={handleDisconnect}
+                      className="shrink-0 px-2 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-mono text-[9px] rounded cursor-pointer transition-colors"
+                    >
+                      Trennen
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleConnect}
+                      disabled={connecting}
+                      className="shrink-0 px-2 py-1 bg-black hover:bg-neutral-800 text-white font-mono text-[9px] rounded cursor-pointer transition-colors disabled:opacity-50"
+                    >
+                      {connecting ? '...' : 'Verbinden'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Storage path display & config button */}
+          <div className="bg-[#f0f0f0] p-3 rounded-lg border border-[#e2e2e2] flex flex-col gap-1 shadow-sm">
+            <div className="flex justify-between items-center text-[#585f6c]">
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[14px]">folder</span>
+                <span className="font-mono text-[9px] uppercase tracking-wider font-semibold">CSV-Speicherort</span>
+              </div>
+              <button
+                onClick={onChangeStoragePath}
+                title="Speicherort ändern"
+                className="text-[#4c4546] hover:text-black transition-colors cursor-pointer flex items-center justify-center p-0.5 rounded hover:bg-neutral-200"
+              >
+                <span className="material-symbols-outlined text-[14px]">edit</span>
+              </button>
             </div>
-            <button
-              onClick={onChangeStoragePath}
-              title="Speicherort ändern"
-              className="text-[#4c4546] hover:text-black transition-colors cursor-pointer flex items-center justify-center p-0.5 rounded hover:bg-neutral-200"
+            <div
+              className="font-mono text-[10px] text-black break-all select-text font-medium leading-tight cursor-help mt-1"
+              title={csvStoragePath}
             >
-              <span className="material-symbols-outlined text-[14px]">edit</span>
-            </button>
+              {csvStoragePath}
+            </div>
           </div>
-          <div
-            className="font-mono text-[10px] text-black break-all select-text font-medium leading-tight cursor-help mt-1"
-            title={csvStoragePath}
-          >
-            {csvStoragePath}
-          </div>
-        </div>
 
-        {/* Real-time Clock */}
-        <div id="realtime-clock" className="bg-[#f0f0f0] p-3 rounded-lg border border-[#e2e2e2] flex flex-col gap-1 shadow-sm">
-          <div className="flex items-center gap-1.5 text-[#585f6c]">
-            <span className="material-symbols-outlined text-[14px]">schedule</span>
-            <span className="font-mono text-[9px] uppercase tracking-wider font-semibold">System-Zeit</span>
+          {/* Real-time Clock */}
+          <div id="realtime-clock" className="bg-[#f0f0f0] p-3 rounded-lg border border-[#e2e2e2] flex flex-col gap-1 shadow-sm">
+            <div className="flex items-center gap-1.5 text-[#585f6c]">
+              <span className="material-symbols-outlined text-[14px]">schedule</span>
+              <span className="font-mono text-[9px] uppercase tracking-wider font-semibold">System-Zeit</span>
+            </div>
+            <div className="font-mono text-base font-bold text-black tracking-wider tabular-nums leading-none">
+              {timeStr}
+            </div>
           </div>
-          <div className="font-mono text-base font-bold text-black tracking-wider tabular-nums leading-none">
-            {timeStr}
+
+          {/* GitHub Help Link & Developer info */}
+          <div className="bg-[#f0f0f0] p-3 rounded-lg border border-[#e2e2e2] flex flex-col gap-1 shadow-sm">
+            <div className="flex items-center gap-1.5 text-[#585f6c]">
+              <span className="material-symbols-outlined text-[14px]">help</span>
+              <span className="font-mono text-[9px] uppercase tracking-wider font-semibold">Info &amp; Support</span>
+            </div>
+            <div className="mt-1 flex flex-col gap-0.5">
+              <a
+                href="https://github.com/joelzahner/AeroTrackTiming"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-[10px] text-black hover:text-neutral-700 transition-colors break-all font-medium hover:underline"
+              >
+                GitHub Repository ↗
+              </a>
+              <span className="font-mono text-[10px] text-gray-500 font-medium">
+                developed by Joel Zahner
+              </span>
+            </div>
           </div>
         </div>
       </div>

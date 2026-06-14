@@ -33,6 +33,14 @@ function createWindow() {
   });
 
   mainWindow.loadURL('http://localhost:3000');
+
+  // Open external links in default browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http:') || url.startsWith('https:')) {
+      require('electron').shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
   
   // mainWindow.webContents.openDevTools();
 }
