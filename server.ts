@@ -348,7 +348,7 @@ function parseCSV(content: string, expectedHeaders?: string[]): any[] {
 }
 
 // ============================================================
-//  RFID READER BRIDGE MANAGEMENT
+//  RFID READER STATE MANAGEMENT (Bereit für Neuimplementierung)
 // ============================================================
 
 interface RfidState {
@@ -363,6 +363,7 @@ interface RfidState {
   comPort: string;
   baudRate: number;
   antennaIndex: number;
+  powerDbm: number;
   statusMessages: string[];
   // Buffer of unread tags (consumed by polling)
   tagBuffer: Array<{ epc: string; pc: string; crc: string; timestamp: string }>;
@@ -383,6 +384,7 @@ const rfidState: RfidState = {
   comPort: "COM8",
   baudRate: 38400,
   antennaIndex: 1,
+  powerDbm: 27,
   statusMessages: [],
   tagBuffer: [],
   monitoring: false,
@@ -392,40 +394,45 @@ const rfidState: RfidState = {
 function getBridgeExePath(): string {
   // Look for the bridge exe in process.resourcesPath first (for packaged app)
   if (process.resourcesPath) {
-    const prodPath = path.join(process.resourcesPath, "ReaderBridge", "ReaderBridge.exe");
+    const prodPath = path.join(process.resourcesPath, "RRU7182MG_CPP", "rru7182_continuous_reader.exe");
     if (fs.existsSync(prodPath)) return prodPath;
   }
 
-  // Look for the compiled bridge exe
+  // Look for the local exe
   const candidates = [
-    path.join(_dirname, "Reader", "ReaderBridge", "bin", "Debug", "ReaderBridge.exe"),
-    path.join(process.cwd(), "Reader", "ReaderBridge", "bin", "Debug", "ReaderBridge.exe"),
-    path.join(process.cwd(), "Reader", "ReaderBridge", "bin", "Release", "ReaderBridge.exe"),
+    path.join(_dirname, "RRU7182MG_CPP", "rru7182_continuous_reader.exe"),
+    path.join(process.cwd(), "RRU7182MG_CPP", "rru7182_continuous_reader.exe"),
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) return c;
   }
-  return candidates[1]; // default
+  return candidates[0]; // default
 }
 
-function startBridge(comPort: string, baudRate: number, antennaIndex: number): boolean {
+function startBridge(comPort: string, baudRate: number, antennaIndex: number, powerDbm: number = 27): boolean {
   if (rfidState.bridgeProcess) {
     stopBridge();
   }
 
   const exePath = getBridgeExePath();
   if (!fs.existsSync(exePath)) {
-    rfidState.statusMessages.push(`Bridge executable not found: ${exePath}`);
+    rfidState.statusMessages.push(`Reader executable not found: ${exePath}`);
     rfidState.mode = "simulation";
     return false;
   }
 
+  // Parse COM port number (z.B. "COM4" -> "4")
+  const portMatch = comPort.match(/\d+/);
+  const portNum = portMatch ? portMatch[0] : "4";
+  const validPower = Math.max(1, Math.min(33, Number(powerDbm) || 27));
+
   try {
     const child = spawn(exePath, [
-      "--port", comPort,
-      "--baud", String(baudRate),
-      "--antenna", String(antennaIndex)
+      "--com", portNum,
+      "--power", String(validPower),
+      "--baud", "6"
     ], {
+      cwd: path.dirname(exePath), // Wichtig, damit die UHFEx10.dll gefunden wird!
       stdio: ["pipe", "pipe", "pipe"],
     });
 
@@ -439,40 +446,33 @@ function startBridge(comPort: string, baudRate: number, antennaIndex: number): b
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed) continue;
-        try {
-          const msg = JSON.parse(trimmed);
-          if (msg.type === "tag") {
-            rfidState.lastEpc = msg.epc || "";
-            rfidState.lastPc = msg.pc || "";
-            rfidState.lastCrc = msg.crc || "";
-            rfidState.lastTimestamp = msg.timestamp || new Date().toISOString();
-            rfidState.lastRssi = msg.rssi || Math.floor(Math.random() * 20) - 55;
-            // Add to buffer for polling
-            rfidState.tagBuffer.push({
-              epc: rfidState.lastEpc,
-              pc: rfidState.lastPc,
-              crc: rfidState.lastCrc,
-              timestamp: rfidState.lastTimestamp,
-            });
-            // Keep buffer manageable
-            if (rfidState.tagBuffer.length > 100) {
-              rfidState.tagBuffer = rfidState.tagBuffer.slice(-50);
-            }
-
-            // If monitoring is active, automatically register ZIEL event
-            if (rfidState.monitoring && rfidState.monitorRace) {
-              handleAutoZielDetection(rfidState.lastEpc);
-            }
-          } else if (msg.type === "status") {
-            rfidState.statusMessages.push(msg.message || "");
-            if (rfidState.statusMessages.length > 50) {
-              rfidState.statusMessages = rfidState.statusMessages.slice(-25);
-            }
-          } else if (msg.type === "error") {
-            rfidState.statusMessages.push(`ERROR: ${msg.message}`);
+        
+        // Suche nach Tags: z.B. "EPC=3000E280110C20000B020B02  RSSI=115"
+        const tagMatch = trimmed.match(/EPC=([0-9A-F]+)\s+RSSI=(-?\d+)/i);
+        if (tagMatch) {
+          rfidState.lastEpc = tagMatch[1];
+          rfidState.lastPc = "";
+          rfidState.lastCrc = "";
+          rfidState.lastTimestamp = new Date().toISOString();
+          rfidState.lastRssi = parseInt(tagMatch[2], 10);
+          
+          rfidState.tagBuffer.push({
+            epc: rfidState.lastEpc,
+            pc: rfidState.lastPc,
+            crc: rfidState.lastCrc,
+            timestamp: rfidState.lastTimestamp,
+          });
+          if (rfidState.tagBuffer.length > 100) {
+            rfidState.tagBuffer = rfidState.tagBuffer.slice(-50);
           }
-        } catch (parseErr) {
-          // Non-JSON output, ignore
+          if (rfidState.monitoring && rfidState.monitorRace) {
+            handleAutoZielDetection(rfidState.lastEpc);
+          }
+        } else if (trimmed !== ".") { // Ignoriere den Punkt, der für leere Scans steht
+          rfidState.statusMessages.push(trimmed);
+          if (rfidState.statusMessages.length > 50) {
+            rfidState.statusMessages = rfidState.statusMessages.slice(-25);
+          }
         }
       }
     });
@@ -482,7 +482,7 @@ function startBridge(comPort: string, baudRate: number, antennaIndex: number): b
     });
 
     child.on("close", (code: number | null) => {
-      rfidState.statusMessages.push(`Bridge process exited with code ${code}`);
+      rfidState.statusMessages.push(`Reader process exited with code ${code}`);
       rfidState.connected = false;
       rfidState.bridgeProcess = null;
       if (rfidState.mode === "reader") {
@@ -491,7 +491,7 @@ function startBridge(comPort: string, baudRate: number, antennaIndex: number): b
     });
 
     child.on("error", (err: Error) => {
-      rfidState.statusMessages.push(`Bridge process error: ${err.message}`);
+      rfidState.statusMessages.push(`Reader process error: ${err.message}`);
       rfidState.connected = false;
       rfidState.bridgeProcess = null;
       rfidState.mode = "simulation";
@@ -503,9 +503,10 @@ function startBridge(comPort: string, baudRate: number, antennaIndex: number): b
     rfidState.comPort = comPort;
     rfidState.baudRate = baudRate;
     rfidState.antennaIndex = antennaIndex;
+    rfidState.powerDbm = validPower;
     return true;
   } catch (err: any) {
-    rfidState.statusMessages.push(`Failed to start bridge: ${err.message}`);
+    rfidState.statusMessages.push(`Failed to start reader: ${err.message}`);
     rfidState.mode = "simulation";
     return false;
   }
@@ -514,15 +515,9 @@ function startBridge(comPort: string, baudRate: number, antennaIndex: number): b
 function stopBridge() {
   if (rfidState.bridgeProcess) {
     try {
-      rfidState.bridgeProcess.stdin?.write("QUIT\n");
-      setTimeout(() => {
-        if (rfidState.bridgeProcess) {
-          rfidState.bridgeProcess.kill("SIGTERM");
-          rfidState.bridgeProcess = null;
-        }
-      }, 1000);
+      rfidState.bridgeProcess.kill("SIGTERM");
+      rfidState.bridgeProcess = null;
     } catch (e) {
-      rfidState.bridgeProcess?.kill("SIGTERM");
       rfidState.bridgeProcess = null;
     }
   }
@@ -655,6 +650,7 @@ app.get("/api/rfid/status", (req, res) => {
     comPort: rfidState.comPort,
     baudRate: rfidState.baudRate,
     antennaIndex: rfidState.antennaIndex,
+    powerDbm: rfidState.powerDbm,
     lastEpc: rfidState.lastEpc,
     lastTimestamp: rfidState.lastTimestamp,
     monitoring: rfidState.monitoring,
@@ -665,16 +661,18 @@ app.get("/api/rfid/status", (req, res) => {
 });
 
 app.post("/api/rfid/connect", (req, res) => {
-  const { port, baudRate, antennaIndex } = req.body;
+  const { port, baudRate, antennaIndex, powerDbm } = req.body;
   const comPort = port || rfidState.comPort || "COM8";
   const baud = baudRate || rfidState.baudRate || 38400;
   const antenna = antennaIndex ?? rfidState.antennaIndex ?? 1;
+  const power = powerDbm !== undefined ? Number(powerDbm) : (rfidState.powerDbm || 27);
 
-  const ok = startBridge(comPort, baud, antenna);
+  const ok = startBridge(comPort, baud, antenna, power);
   res.json({
     success: ok,
     mode: rfidState.mode,
     connected: rfidState.connected,
+    powerDbm: rfidState.powerDbm,
   });
 });
 

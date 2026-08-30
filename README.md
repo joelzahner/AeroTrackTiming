@@ -13,15 +13,13 @@ graph TD
     A[Electron Desktop-Wrapper] -->|Spawnt| B[Express NodeJS Backend]
     A -->|Rendert| C[React Frontend UI]
     C -->|HTTP REST / WebSockets| B
-    B -->|Kommunikation via IPC/Pipe| D[C# ReaderBridge.exe]
-    D -->|RS232 / Serial COM| E[UHF RFID-Reader]
+    B -->|RS232 / Serial COM / Reader| E[UHF RFID-Reader]
     B -->|Liest/Schreibt| F[Lokale CSV-Dateien]
 ```
 
 1. **Frontend (React, TypeScript, Vite, Tailwind CSS, Motion):** Eine interaktive Single-Page-App (SPA), die in Electron gerendert wird. Sie bietet reibungslose Übergänge, Echtzeit-Timing-Visualisierungen und intuitive Assistenten.
 2. **Backend (Express, NodeJS):** Ein lokaler Webserver (standardmäßig auf Port 3000), der Dateiverwaltung (CSV-Datenhaltung), Berechnungen für Ranglisten und die Kommunikation mit der Hardware steuert.
-3. **Hardware-Bridge (C# .NET Framework 4.7.2):** Die App `ReaderBridge.exe` stellt eine Brücke zwischen der C++ Hersteller-DLL (`ReaderService.dll`) und dem Node-Backend her. Sie liest RFID-Transponder-Daten und leitet sie im standardisierten JSON-Format an das Backend weiter.
-4. **Datenhaltung (Lokale CSV-Dateien):** Alle Daten (Anmeldungen, Tag-Zuweisungen, Start- und Zielzeiten) werden offline in Excel-kompatiblen CSV-Dateien gespeichert. Es ist keine Internetverbindung oder Datenbankinstallation erforderlich.
+3. **Datenhaltung (Lokale CSV-Dateien):** Alle Daten (Anmeldungen, Tag-Zuweisungen, Start- und Zielzeiten) werden offline in Excel-kompatiblen CSV-Dateien gespeichert. Es ist keine Internetverbindung oder Datenbankinstallation erforderlich.
 
 ---
 
@@ -70,16 +68,7 @@ AeroTrackTiming unterstützt zwei verschiedene Renn-Modi:
 
 ## 🔌 Hardware-Integration (RFID UHF Reader)
 
-Die Steuerung des RFID-Readers erfolgt über das Backend und den C#-Dienst `ReaderBridge.exe` im Unterordner `Reader/`.
-
-### B04 Antennen-Steuerung (GPIO-Mapping)
-Der Dienst unterstützt die Umschaltung von bis zu 4 Antennenanschlüssen an B04-Multiplexern:
-* Antenne **1** ➡️ GPIO `72`
-* Antenne **2** ➡️ GPIO `71`
-* Antenne **3** ➡️ GPIO `73`
-* Antenne **4** ➡️ GPIO `70`
-
-*Hinweis: Wird die Antenne auf `0` gesetzt, überspringt das System die GPIO-Umschaltung und nutzt den aktuellen Standard-Port des Readers.*
+Die Steuerung und Anbindung des RFID-Readers erfolgt über das Backend.
 
 ### Serial-Parameter
 * **Baudrate:** Standardmäßig `38400`
@@ -121,7 +110,6 @@ AeroTrackTiming-Datenordner/
 ### Voraussetzungen
 * [Node.js](https://nodejs.org/) (Version 18+ empfohlen)
 * Windows OS (erforderlich für die RFID-Reader-Treiber und PowerShell-Ordnerauswahl)
-* [Optional] .NET Framework 4.7.2 SDK (zum Kompilieren der `ReaderBridge.exe`)
 
 ### 1. Repository klonen und installieren
 ```powershell
@@ -142,12 +130,6 @@ Der folgende Befehl startet das NodeJS-Backend und öffnet die Electron-Desktop-
 npm run dev
 ```
 
-### 4. RFID ReaderBridge kompilieren (C#)
-Sollte die `ReaderBridge.exe` nicht vorhanden oder modifiziert worden sein, kann sie per PowerShell gebaut werden:
-```powershell
-dotnet build Reader\TagReaderCore\TagReader.Core.csproj -c Debug -p:Platform=x86
-```
-
 ---
 
 ## 📦 Build & Release (Desktop App packen)
@@ -161,7 +143,7 @@ npm run dist
 Dieser Befehl führt folgende Schritte aus:
 1. Kompiliert das React-Frontend über Vite (`vite build`).
 2. Bundelt das NodeJS-Backend über Esbuild in eine Single-File `dist/server.cjs`.
-3. Verpackt die Electron-Shell, das Backend und alle notwendigen Assets (z.B. `Rangliste_Vorlage.xlsx` und `Reader/`) mithilfe von `electron-builder` in den Ausgabeordner `dist-desktop/`.
+3. Verpackt die Electron-Shell, das Backend und alle notwendigen Assets (z.B. `Rangliste_Vorlage.xlsx`) mithilfe von `electron-builder` in den Ausgabeordner `dist-desktop/`.
 
 Der fertige Installer befindet sich anschließend unter `dist-desktop/AeroTrackTiming Setup <Version>.exe`.
 

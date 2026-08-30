@@ -32,28 +32,11 @@ export default function Ziel({
   const [isLiveStreamActive, setIsLiveStreamActive] = useState(true);
   const [sysTimeLabel, setSysTimeLabel] = useState('00:00:00.00');
 
-  // Animated visual RFID bars state
-  const [barHeights, setBarHeights] = useState<number[]>([]);
-
   // Track already-finished bibs to prevent duplicates on client side
   const [finishedBibs, setFinishedBibs] = useState<Set<string>>(new Set());
 
   // Simulation filter
   const [simFilter, setSimFilter] = useState('');
-
-  // Setup visual bars on mount
-  useEffect(() => {
-    setBarHeights(Array.from({ length: 30 }, () => Math.floor(Math.random() * 80) + 20));
-  }, []);
-
-  // Animate RF signal bars if stream is active
-  useEffect(() => {
-    if (!isLiveStreamActive) return;
-    const interval = setInterval(() => {
-      setBarHeights(Array.from({ length: 30 }, () => Math.floor(Math.random() * 80) + 20));
-    }, 150);
-    return () => clearInterval(interval);
-  }, [isLiveStreamActive]);
 
   // Precision 1/100s clock state
   useEffect(() => {
@@ -345,7 +328,7 @@ export default function Ziel({
           <div className="font-sans text-xs font-bold text-black border border-[#cfc4c5] p-2 bg-[#f9f9f9] rounded flex justify-between items-center">
             <span>📁 {activeRace}/</span>
             <span className={`text-[9px] font-mono font-bold ${rfidStatus.connected ? 'text-green-600 animate-pulse' : 'text-[#585f6c]'}`}>
-              ● {rfidStatus.connected ? 'READER ACTIVE' : 'SIMULATION'}
+              ● {rfidStatus.connected ? 'READER AKTIV' : 'MANUELL'}
             </span>
           </div>
         </div>
@@ -368,10 +351,6 @@ export default function Ziel({
             <span className="font-mono text-[10px] text-[#585f6c] mb-1">MODUS</span>
             <span className="font-mono text-xs font-bold text-black">{rfidStatus.connected ? 'AUTO-DETECT' : 'MANUELL'}</span>
           </div>
-          <div className="flex flex-col border-l border-[#e2e2e2] pl-4">
-            <span className="font-mono text-[10px] text-[#585f6c] mb-1">GPS TIME INDEX</span>
-            <span className="font-mono text-xs font-bold text-black" id="sys-time">{sysTimeLabel}</span>
-          </div>
         </div>
       </div>
 
@@ -381,7 +360,7 @@ export default function Ziel({
         {/* Left Side: Live feeds */}
         <div className="lg:col-span-8 flex flex-col gap-6 justify-between">
           
-          {/* Latest Finish visual */}
+          {/* Systemzeit Visual */}
           <div className="bg-[#f9f9f9] border border-[#cfc4c5] rounded p-6 relative overflow-hidden flex flex-col justify-between">
             <div className="absolute top-0 right-0 p-4">
               <span className="px-2 py-0.5 bg-neutral-200 text-[#585f6c] font-mono text-[10px] rounded border border-[#cfc4c5]">
@@ -389,36 +368,16 @@ export default function Ziel({
               </span>
             </div>
             
-            <h2 className="font-mono text-xs text-[#585f6c] mb-4 uppercase tracking-widest">LATEST DETECTION</h2>
+            <h2 className="font-mono text-xs text-[#585f6c] mb-4 uppercase tracking-widest">SYSTEMZEIT (LIVE)</h2>
             
             <div className="flex-1 flex flex-col justify-center items-center py-6">
-              <div id="latest-finish-time" className="font-mono text-5xl md:text-6xl font-extrabold text-black mb-2 animate-pulse">
-                {latestFinishEvent ? latestFinishEvent.timestamp : '--:--:--.--'}
+              <div id="live-system-time-display" className="font-mono text-6xl md:text-7xl font-extrabold text-black tracking-wider tabular-nums mb-2">
+                {sysTimeLabel}
               </div>
-              <div className="flex items-center gap-4 border-t border-[#e2e2e2] pt-4 w-full justify-center">
-                <span className="font-sans text-xl font-bold text-[#5c5c5c]">BIB</span>
-                <span id="latest-finish-bib" className="font-mono text-2xl font-black text-black">
-                  {latestFinishBib ? latestFinishBib.padStart(3, '0') : '000'}
-                </span>
-                <span className="mx-4 w-px h-6 bg-[#cfc4c5]"></span>
-                <span id="latest-finish-name" className="font-sans text-lg font-bold text-black">
-                  {latestFinishAthlete ? `${latestFinishAthlete.vorname} ${latestFinishAthlete.name}` : 'Warte auf Signal...'}
-                </span>
+              <div className="flex items-center gap-2 border-t border-[#e2e2e2] pt-4 w-full justify-center text-[#585f6c] font-mono text-xs">
+                <span className="material-symbols-outlined text-[16px]">schedule</span>
+                <span>Offizielle Zeitmessung (1/100s Präzision)</span>
               </div>
-            </div>
-
-            {/* Pulsating stream visualization bars */}
-            <div className="h-10 w-full mt-4 flex items-end gap-[3px] border-t border-neutral-100 pt-3 opacity-60">
-              {barHeights.map((ht, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-t-sm"
-                  style={{
-                    height: `${ht}%`,
-                    backgroundColor: i % 4 === 0 ? '#10B981' : '#000000',
-                  }}
-                ></div>
-              ))}
             </div>
           </div>
 

@@ -24,8 +24,29 @@ export default function Sidebar({
 }: SidebarProps) {
   const [timeStr, setTimeStr] = useState('');
   const [showReaderConfig, setShowReaderConfig] = useState(false);
-  const [comPort, setComPort] = useState(rfidStatus.comPort || 'COM8');
+  const [comPort, setComPort] = useState(rfidStatus.comPort || 'COM4');
+  const [powerDbm, setPowerDbm] = useState<number>(rfidStatus.powerDbm ?? 27);
+  const [availablePorts, setAvailablePorts] = useState<string[]>([]);
   const [connecting, setConnecting] = useState(false);
+
+  useEffect(() => {
+    if (rfidStatus.powerDbm !== undefined) {
+      setPowerDbm(rfidStatus.powerDbm);
+    }
+  }, [rfidStatus.powerDbm]);
+
+  useEffect(() => {
+    if (showReaderConfig) {
+      fetch('/api/rfid/ports')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.ports && Array.isArray(data.ports)) {
+            setAvailablePorts(data.ports);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [showReaderConfig]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -69,7 +90,7 @@ export default function Sidebar({
       await fetch('/api/rfid/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ port: comPort, baudRate: 38400, antennaIndex: 1 }),
+        body: JSON.stringify({ port: comPort, baudRate: 38400, antennaIndex: 1, powerDbm }),
       });
     } catch (err) {
       console.error('Failed to connect reader:', err);
@@ -163,19 +184,79 @@ export default function Sidebar({
             </div>
 
             {showReaderConfig && (
-              <div className="mt-1 flex flex-col gap-2 border-t border-[#e2e2e2] pt-2">
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    value={comPort}
-                    onChange={(e) => setComPort(e.target.value)}
-                    placeholder="COM8"
-                    className="flex-1 min-w-0 bg-white border border-[#cfc4c5] p-1.5 font-mono text-[10px] rounded text-black focus:outline-none focus:border-black"
-                  />
+              <div className="mt-1 flex flex-col gap-2.5 border-t border-[#e2e2e2] pt-2.5">
+                {/* Port Selection */}
+                <div className="flex flex-col gap-1">
+                  <label className="font-mono text-[9px] text-[#585f6c] uppercase">COM-Port</label>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={comPort}
+                      onChange={(e) => setComPort(e.target.value)}
+                      placeholder="COM4"
+                      className="flex-1 min-w-0 bg-white border border-[#cfc4c5] p-1.5 font-mono text-[10px] rounded text-black focus:outline-none focus:border-black"
+                    />
+                    {availablePorts.length > 0 && (
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          if (e.target.value) setComPort(e.target.value);
+                        }}
+                        className="bg-white border border-[#cfc4c5] text-[10px] font-mono rounded px-1 text-[#585f6c] focus:outline-none cursor-pointer"
+                        title="Gefundene COM-Ports auswählen"
+                      >
+                        <option value="">Ports...</option>
+                        {availablePorts.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sendeleistung (dBm) */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center text-[9px] font-mono text-[#585f6c]">
+                    <span className="uppercase font-medium">Sendeleistung</span>
+                    <span className="font-bold text-black bg-neutral-200 px-1 py-0.5 rounded text-[9px]">{powerDbm} dBm</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="range"
+                      min={1}
+                      max={33}
+                      step={1}
+                      value={powerDbm}
+                      onChange={(e) => setPowerDbm(Number(e.target.value))}
+                      className="flex-1 accent-black h-1.5 bg-neutral-300 rounded cursor-pointer"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      max={33}
+                      value={powerDbm}
+                      onChange={(e) => {
+                        const val = Math.max(1, Math.min(33, Number(e.target.value) || 1));
+                        setPowerDbm(val);
+                      }}
+                      className="w-10 bg-white border border-[#cfc4c5] p-1 font-mono text-[10px] text-center rounded text-black focus:outline-none focus:border-black"
+                    />
+                  </div>
+                  <div className="flex justify-between text-[8px] font-mono text-[#8a8a8a] px-0.5">
+                    <span>1 dBm (Nah)</span>
+                    <span>27 dBm (Standard)</span>
+                    <span>33 dBm (Max)</span>
+                  </div>
+                </div>
+
+                {/* Connect / Disconnect Action */}
+                <div className="pt-0.5">
                   {rfidStatus.connected ? (
                     <button
                       onClick={handleDisconnect}
-                      className="shrink-0 px-2 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-mono text-[9px] rounded cursor-pointer transition-colors"
+                      className="w-full py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-mono text-[10px] font-medium rounded cursor-pointer transition-colors"
                     >
                       Trennen
                     </button>
@@ -183,14 +264,25 @@ export default function Sidebar({
                     <button
                       onClick={handleConnect}
                       disabled={connecting}
-                      className="shrink-0 px-2 py-1 bg-black hover:bg-neutral-800 text-white font-mono text-[9px] rounded cursor-pointer transition-colors disabled:opacity-50"
+                      className="w-full py-1.5 bg-black hover:bg-neutral-800 text-white font-mono text-[10px] font-medium rounded cursor-pointer transition-colors disabled:opacity-50"
                     >
-                      {connecting ? '...' : 'Verbinden'}
+                      {connecting ? 'Verbinde...' : 'Verbinden'}
                     </button>
                   )}
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Real-time Clock */}
+          <div id="realtime-clock" className="bg-[#f0f0f0] p-3 rounded-lg border border-[#e2e2e2] flex flex-col gap-1 shadow-sm">
+            <div className="flex items-center gap-1.5 text-[#585f6c]">
+              <span className="material-symbols-outlined text-[14px]">schedule</span>
+              <span className="font-mono text-[9px] uppercase tracking-wider font-semibold">System-Zeit</span>
+            </div>
+            <div className="font-mono text-base font-bold text-black tracking-wider tabular-nums leading-none">
+              {timeStr}
+            </div>
           </div>
 
           {/* Storage path display & config button */}
@@ -213,17 +305,6 @@ export default function Sidebar({
               title={csvStoragePath}
             >
               {csvStoragePath}
-            </div>
-          </div>
-
-          {/* Real-time Clock */}
-          <div id="realtime-clock" className="bg-[#f0f0f0] p-3 rounded-lg border border-[#e2e2e2] flex flex-col gap-1 shadow-sm">
-            <div className="flex items-center gap-1.5 text-[#585f6c]">
-              <span className="material-symbols-outlined text-[14px]">schedule</span>
-              <span className="font-mono text-[9px] uppercase tracking-wider font-semibold">System-Zeit</span>
-            </div>
-            <div className="font-mono text-base font-bold text-black tracking-wider tabular-nums leading-none">
-              {timeStr}
             </div>
           </div>
 

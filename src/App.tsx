@@ -23,6 +23,7 @@ export interface RfidStatus {
   comPort: string;
   baudRate: number;
   antennaIndex: number;
+  powerDbm?: number;
   lastEpc: string;
   monitoring: boolean;
   monitorRace: string;
@@ -54,6 +55,7 @@ export default function App() {
     comPort: 'COM8',
     baudRate: 38400,
     antennaIndex: 1,
+    powerDbm: 27,
     lastEpc: '',
     monitoring: false,
     monitorRace: '',

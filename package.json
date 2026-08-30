@@ -57,8 +57,8 @@
     ],
     "extraResources": [
       {
-        "from": "Reader/ReaderBridge/bin/Debug",
-        "to": "ReaderBridge",
+        "from": "RRU7182MG_CPP",
+        "to": "RRU7182MG_CPP",
         "filter": [
           "**/*"
         ]

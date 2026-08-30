@@ -5,6 +5,27 @@ const { spawn } = require('child_process');
 const isProd = app.isPackaged || process.env.NODE_ENV === 'production';
 let serverProcess = null;
 
+const http = require('http');
+
+function waitForServer(url, timeoutMs = 20000) {
+  const startTime = Date.now();
+  return new Promise((resolve) => {
+    const check = () => {
+      const req = http.get(url, (res) => {
+        resolve(true);
+      });
+      req.on('error', () => {
+        if (Date.now() - startTime > timeoutMs) {
+          resolve(false);
+        } else {
+          setTimeout(check, 300);
+        }
+      });
+    };
+    check();
+  });
+}
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1280,
@@ -28,7 +49,7 @@ function createWindow() {
         if (!mainWindow.isDestroyed()) {
           mainWindow.loadURL('http://localhost:3000');
         }
-      }, 200);
+      }, 300);
     }
   });
 
@@ -60,7 +81,7 @@ if (!gotTheLock) {
     }
   });
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     if (isProd) {
       process.env.NODE_ENV = 'production';
       process.env.PORT = '3000';
@@ -74,17 +95,26 @@ if (!gotTheLock) {
       setTimeout(createWindow, 500);
     } else {
       console.log("Starting development server...");
-      serverProcess = spawn('npx', ['tsx', 'server.ts'], {
-        stdio: 'inherit',
-        shell: true
-      });
+      try {
+        const tsxCli = require.resolve('tsx/cli');
+        serverProcess = spawn(process.execPath, [tsxCli, 'server.ts'], {
+          stdio: 'inherit',
+          env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+        });
+      } catch (e) {
+        // Fallback to node directly
+        serverProcess = spawn('node', [path.join(__dirname, 'node_modules', 'tsx', 'dist', 'cli.mjs'), 'server.ts'], {
+          stdio: 'inherit'
+        });
+      }
 
       serverProcess.on('error', (err) => {
         console.error('Failed to start development server:', err);
       });
 
-      // Give the Vite server 2 seconds to spin up, then create the window
-      setTimeout(createWindow, 2000);
+      // Wait until the Express & Vite dev server responds before opening the window
+      await waitForServer('http://localhost:3000');
+      createWindow();
     }
 
     app.on('activate', () => {
