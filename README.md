@@ -4,25 +4,6 @@ AeroTrackTiming ist eine spezialisierte Offline-Desktop-Anwendung für die Zeitm
 
 ---
 
-## 🏗️ Systemarchitektur
-
-Das System besteht aus vier Hauptkomponenten:
-
-```mermaid
-graph TD
-    A[Electron Desktop-Wrapper] -->|Spawnt| B[Express NodeJS Backend]
-    A -->|Rendert| C[React Frontend UI]
-    C -->|HTTP REST / WebSockets| B
-    B -->|RS232 / Serial COM / Reader| E[UHF RFID-Reader]
-    B -->|Liest/Schreibt| F[Lokale CSV-Dateien]
-```
-
-1. **Frontend (React, TypeScript, Vite, Tailwind CSS, Motion):** Eine interaktive Single-Page-App (SPA), die in Electron gerendert wird. Sie bietet reibungslose Übergänge, Echtzeit-Timing-Visualisierungen und intuitive Assistenten.
-2. **Backend (Express, NodeJS):** Ein lokaler Webserver (standardmäßig auf Port 3000), der Dateiverwaltung (CSV-Datenhaltung), Berechnungen für Ranglisten und die Kommunikation mit der Hardware steuert.
-3. **Datenhaltung (Lokale CSV-Dateien):** Alle Daten (Anmeldungen, Tag-Zuweisungen, Start- und Zielzeiten) werden offline in Excel-kompatiblen CSV-Dateien gespeichert. Es ist keine Internetverbindung oder Datenbankinstallation erforderlich.
-
----
-
 ## ✨ Features und Funktionen
 
 ### 1. 📂 Zentrale Ordnerverwaltung & Excel-Kompatibilität
@@ -66,9 +47,9 @@ AeroTrackTiming unterstützt zwei verschiedene Renn-Modi:
 
 ---
 
-## 🔌 Hardware-Integration (RFID UHF Reader)
+## 🔌 Hardware-Integration (RoyalRay RRU7182M RFID Reader)
 
-Die Steuerung und Anbindung des RFID-Readers erfolgt über das Backend.
+Die Steuerung und Anbindung des RFID-Readers (Modell: **RoyalRay RRU7182M**) erfolgt über das Backend und eine integrierte C++ Bridge.
 
 ### Serial-Parameter
 * **Baudrate:** Standardmäßig `38400`
@@ -118,13 +99,7 @@ cd AeroTrackTiming
 npm install
 ```
 
-### 2. Umgebungsvariablen einrichten
-Erstelle eine `.env.local` Datei im Hauptverzeichnis (du kannst die `.env.example` kopieren) und setze bei Bedarf deinen Gemini API-Key:
-```env
-GEMINI_API_KEY=dein_api_key_hier
-```
-
-### 3. Entwicklungsserver starten
+### 2. Entwicklungsserver starten
 Der folgende Befehl startet das NodeJS-Backend und öffnet die Electron-Desktop-App im Hot-Reload-Modus:
 ```powershell
 npm run dev

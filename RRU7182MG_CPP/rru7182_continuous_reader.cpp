@@ -186,7 +186,7 @@ static bool isInventorySuccessCode(int ret) {
     }
 }
 
-static bool readOnce(const ReaderApi &api, BYTE comAddr, int frmHandle, std::vector<std::string> &tags) {
+static bool readOnce(const ReaderApi &api, BYTE comAddr, int frmHandle, std::vector<std::string> &tags, BYTE inAnt) {
     BYTE epcList[4096] = {0};
     BYTE ant = 0;
     int totalLen = 0;
@@ -197,7 +197,7 @@ static bool readOnce(const ReaderApi &api, BYTE comAddr, int frmHandle, std::vec
 
     int ret = api.Inventory_G2(
         &comAddr,
-        4, // QValue
+        3, // QValue (optimiert für 1-4 gleichzeitige Tags an der Ziellinie)
         0, // Session
         0, // MaskMem
         maskAdr,
@@ -208,8 +208,8 @@ static bool readOnce(const ReaderApi &api, BYTE comAddr, int frmHandle, std::vec
         0, // LenTID
         0, // TIDFlag
         0, // Target
-        0x80, // erste Antenne
-        20, // ScanTime
+        inAnt, // ausgewaehlte Antenne
+        10, // ScanTime (kurze Scanzeit für maximale Abfragefrequenz)
         0, // FastFlag
         epcList,
         &ant,
@@ -305,22 +305,26 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    std::cout << "Kontinuierliches Lesen gestartet. Zum Beenden ESC oder Ctrl+C druecken.\n\n";
+    std::cout << "Kontinuierliches Hochgeschwindigkeits-Lesen gestartet (Antennen 1 & 2).\n\n";
 
+    BYTE currentAnt = 0x80; // Start mit Antenne 1
     while (true) {
         std::vector<std::string> readTags;
-        bool gotTag = readOnce(api, comAddr, frmHandle, readTags);
+        bool gotTag = readOnce(api, comAddr, frmHandle, readTags, currentAnt);
 
-        if (!gotTag) {
-            std::cout << ".";
-            std::cout.flush();
+        // Wechsle zwischen Antenne 1 (0x80) und Antenne 2 (0x81)
+        if (currentAnt == 0x80) {
+            currentAnt = 0x81;
+        } else {
+            currentAnt = 0x80;
         }
 
         if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
             break;
         }
 
-        Sleep(150);
+        // Minimales Sleep für maximale Sampling-Rate (ca. 40-50 Scans/Sekunde)
+        Sleep(2);
     }
 
     api.CloseSpecComPort(frmHandle);
