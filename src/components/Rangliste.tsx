@@ -449,12 +449,14 @@ export default function Rangliste({
   // Compile active standings based on tab
   const isOverallTab = activeViewTab === "Gesamtwertung";
   const rawStandings = isOverallTab ? [] : getProcessedStandingsForRace(activeViewTab);
+  // Cache overall standings to avoid double computation on render
+  const overallStandings = isOverallTab ? getProcessedOverallStandings() : null;
   const activeStandings = isOverallTab 
-    ? getFilteredOverallStandings(getProcessedOverallStandings())
+    ? getFilteredOverallStandings(overallStandings!)
     : getFilteredStandings(rawStandings);
 
   const totalPossibleItems = isOverallTab 
-    ? getProcessedOverallStandings().length 
+    ? (overallStandings?.length ?? 0)
     : rawStandings.length;
 
   return (

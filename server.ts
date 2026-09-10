@@ -323,7 +323,13 @@ function parseCSV(content: string, expectedHeaders?: string[]): any[] {
     for (let charIndex = 0; charIndex < rowRaw.length; charIndex++) {
       const c = rowRaw[charIndex];
       if (c === '"') {
-        insideQuotes = !insideQuotes;
+        // Handle escaped double-quotes ("") inside quoted fields
+        if (insideQuotes && rowRaw[charIndex + 1] === '"') {
+          current += '"';
+          charIndex++; // skip next quote
+        } else {
+          insideQuotes = !insideQuotes;
+        }
       } else if (c === delimiter && !insideQuotes) {
         values.push(current.trim());
         current = "";
@@ -373,6 +379,10 @@ interface RfidState {
   // In-memory set to prevent race conditions in duplicate detection
   // Key: "raceName:bib"
   finishedBibsInMemory: Set<string>;
+  // Watchdog: timestamp (ms) of last stdout activity from bridge process
+  lastActivityMs: number;
+  // Watchdog interval handle
+  watchdogTimer: ReturnType<typeof setInterval> | null;
 }
 
 const rfidState: RfidState = {
@@ -393,6 +403,8 @@ const rfidState: RfidState = {
   monitoring: false,
   monitorRace: "",
   finishedBibsInMemory: new Set<string>(),
+  lastActivityMs: 0,
+  watchdogTimer: null,
 };
 
 function getBridgeExePath(): string {
@@ -443,6 +455,9 @@ function startBridge(comPort: string, baudRate: number, antennaIndex: number, po
     let lineBuffer = "";
 
     child.stdout?.on("data", (data: Buffer) => {
+      // Update activity timestamp on every byte received – used by the watchdog
+      rfidState.lastActivityMs = Date.now();
+
       // Normalize Windows \r\n to \n before splitting to avoid empty-line artifacts
       lineBuffer += data.toString("utf8").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
       const lines = lineBuffer.split("\n");
@@ -512,6 +527,30 @@ function startBridge(comPort: string, baudRate: number, antennaIndex: number, po
     rfidState.baudRate = baudRate;
     rfidState.antennaIndex = antennaIndex;
     rfidState.powerDbm = validPower;
+    rfidState.lastActivityMs = Date.now(); // Mark connection start as first activity
+
+    // ---- Watchdog: detect silent disconnect ----
+    // The C++ bridge outputs "." every ~150-300ms when no tags are present.
+    // If nothing arrives for WATCHDOG_TIMEOUT_MS, the reader was likely unplugged.
+    const WATCHDOG_TIMEOUT_MS = 8000;
+    const WATCHDOG_INTERVAL_MS = 3000;
+    rfidState.watchdogTimer = setInterval(() => {
+      if (!rfidState.connected || rfidState.mode !== "reader") {
+        // Already disconnected – cleanup handled elsewhere
+        if (rfidState.watchdogTimer) {
+          clearInterval(rfidState.watchdogTimer);
+          rfidState.watchdogTimer = null;
+        }
+        return;
+      }
+      const silentMs = Date.now() - rfidState.lastActivityMs;
+      if (silentMs > WATCHDOG_TIMEOUT_MS) {
+        console.warn(`[Watchdog] No activity from RFID reader for ${Math.round(silentMs / 1000)}s – auto-disconnecting.`);
+        rfidState.statusMessages.push(`[Watchdog] Verbindung zum Reader unterbrochen (${Math.round(silentMs / 1000)}s keine Antwort). Verbindung wird getrennt.`);
+        stopBridge();
+      }
+    }, WATCHDOG_INTERVAL_MS);
+
     return true;
   } catch (err: any) {
     rfidState.statusMessages.push(`Failed to start reader: ${err.message}`);
@@ -521,6 +560,11 @@ function startBridge(comPort: string, baudRate: number, antennaIndex: number, po
 }
 
 function stopBridge() {
+  // Clear watchdog timer first to prevent it from firing during cleanup
+  if (rfidState.watchdogTimer) {
+    clearInterval(rfidState.watchdogTimer);
+    rfidState.watchdogTimer = null;
+  }
   if (rfidState.bridgeProcess) {
     try {
       rfidState.bridgeProcess.kill("SIGTERM");

@@ -60,6 +60,8 @@ export default function App() {
     monitoring: false,
     monitorRace: '',
   });
+  // Track previous connected state to detect watchdog-triggered disconnects
+  const [disconnectToast, setDisconnectToast] = useState<string | null>(null);
 
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     const saved = localStorage.getItem('sidebar_width');
@@ -145,12 +147,25 @@ export default function App() {
       const res = await fetch('/api/rfid/status');
       if (res.ok) {
         const data = await res.json();
-        setRfidStatus(data);
+        // Detect watchdog-triggered disconnect: was connected, now isn't
+        setRfidStatus(prev => {
+          if (prev.connected && !data.connected && prev.mode === 'reader') {
+            setDisconnectToast(`RFID Reader (${prev.comPort}) hat die Verbindung verloren.`);
+          }
+          return data;
+        });
       }
     } catch (err) {
       // Ignore
     }
   };
+
+  // Dismiss disconnect toast after 8 seconds
+  useEffect(() => {
+    if (!disconnectToast) return;
+    const timer = setTimeout(() => setDisconnectToast(null), 8000);
+    return () => clearTimeout(timer);
+  }, [disconnectToast]);
 
   // Poll RFID status periodically
   useEffect(() => {
@@ -435,6 +450,30 @@ export default function App() {
         onChangeStoragePath={() => setShowConfigModal(true)}
         rfidStatus={rfidStatus}
       />
+
+      {/* RFID Disconnect Toast Notification */}
+      {disconnectToast && (
+        <div
+          className="fixed top-4 right-4 z-[200] flex items-start gap-3 bg-red-600 text-white rounded-lg shadow-2xl px-4 py-3 max-w-sm animate-[fadeIn_0.2s_ease-out]"
+          role="alert"
+        >
+          <span className="material-symbols-outlined text-[20px] mt-0.5 shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
+            sensors_off
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="font-mono text-xs font-bold uppercase tracking-wider mb-0.5">Reader Verbindung unterbrochen</div>
+            <div className="font-sans text-[11px] leading-snug opacity-90">{disconnectToast}</div>
+          </div>
+          <button
+            onClick={() => setDisconnectToast(null)}
+            className="shrink-0 text-white/70 hover:text-white font-mono text-sm cursor-pointer ml-1"
+            aria-label="Schliessen"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
 
       {/* Responsive mobile header block */}
       <header className="md:hidden flex items-center justify-between px-6 py-4 bg-white border-b border-[#e2e2e2] z-50 sticky top-0 shrink-0">

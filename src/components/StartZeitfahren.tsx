@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Registration, RaceEvent } from '../types';
 
 interface StartZeitfahrenProps {
@@ -53,6 +53,18 @@ export default function StartZeitfahren({
     return () => cancelAnimationFrame(animFrameId);
   }, []);
 
+  const triggerStart = useCallback(() => {
+    if (!currentBib) {
+      alert("Keine Starter mehr in der Registrierungsliste.");
+      return;
+    }
+    // Record Start event to backend
+    onAddRaceEvent(currentBib, 'START');
+    
+    // Jump to next index in registrations sequence
+    setCurrentIndex(prev => prev + 1);
+  }, [currentBib, onAddRaceEvent]);
+
   // Listen to space bar press to trigger Start
   useEffect(() => {
     if (!isRaceConfirmed) return;
@@ -71,7 +83,7 @@ export default function StartZeitfahren({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isRaceConfirmed, currentBib, currentIndex, registeredBibs]);
+  }, [isRaceConfirmed, triggerStart]);
 
   // Race confirmation handler
   const handleConfirmRace = (selected: string) => {
@@ -89,17 +101,6 @@ export default function StartZeitfahren({
     setCurrentIndex(0);
   };
 
-  const triggerStart = () => {
-    if (!currentBib) {
-      alert("Keine Starter mehr in der Registrierungsliste.");
-      return;
-    }
-    // Record Start event to backend
-    onAddRaceEvent(currentBib, 'START');
-    
-    // Jump to next index in registrations sequence
-    setCurrentIndex(prev => prev + 1);
-  };
 
   // Skip or manual bib selection trigger
   const handleJumpToBib = (startNum: string) => {

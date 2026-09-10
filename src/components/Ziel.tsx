@@ -104,6 +104,8 @@ export default function Ziel({
         });
 
         if (match && !finishedBibs.has(match.startnummer)) {
+          // Immediately mark as finished locally to prevent duplicate within the 500ms poll window
+          setFinishedBibs(prev => new Set([...prev, match.startnummer]));
           // Only in simulation mode do we create events from the client;
           // in reader mode the server auto-handles it via monitoring
           if (rfidStatus.mode !== 'reader') {

@@ -40,7 +40,7 @@ export default function Massenstart({
         if (rangeParts.length === 2) {
           const start = parseInt(rangeParts[0], 10);
           const end = parseInt(rangeParts[1], 10);
-          if (!isNaN(start) && !isNaN(end) && start <= end && (end - start < 100)) {
+          if (!isNaN(start) && !isNaN(end) && start <= end && (end - start < 1000)) {
             for (let i = start; i <= end; i++) {
               parsed.push(String(i));
             }
