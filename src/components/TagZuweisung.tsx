@@ -35,8 +35,11 @@ export default function TagZuweisung({
         if (res.ok) {
           const data = await res.json();
           if (data.found) {
-            setActiveEpc(data.epc);
-            setRssi(data.rssi || -50);
+            const isAssigned = assignments.some(a => a.epc === data.epc);
+            if (!isAssigned) {
+              setActiveEpc(data.epc);
+              setRssi(data.rssi || -50);
+            }
           }
         }
       } catch (err) {
@@ -45,7 +48,7 @@ export default function TagZuweisung({
     }, 500);
 
     return () => clearInterval(interval);
-  }, [rfidStatus.mode, rfidStatus.connected]);
+  }, [rfidStatus.mode, rfidStatus.connected, assignments]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
