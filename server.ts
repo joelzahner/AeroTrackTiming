@@ -102,7 +102,7 @@ function migrateOldRaces(dirPath: string) {
     let registrations: any[] = [];
     if (fs.existsSync(regFile)) {
       const regContent = fs.readFileSync(regFile, "utf8");
-      registrations = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "wohnort", "gender", "club"]);
+      registrations = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "gender", "club"]);
     }
 
     const files = fs.readdirSync(oldRacesDir);
@@ -231,7 +231,27 @@ function initializeStorage(dirPath: string) {
   ensureBOMAndSep(tagsFile, "startnummer,epc,timestamp,status");
 
   const registrationsFile = path.join(dirPath, "registrations.csv");
-  ensureBOMAndSep(registrationsFile, "vorname,name,geburtsdatum,startnummer,wohnort,gender,club");
+  ensureBOMAndSep(registrationsFile, "vorname,name,geburtsdatum,startnummer,gender,club");
+
+  // Migration: If registrations.csv contains 'wohnort', remove that column
+  if (fs.existsSync(registrationsFile)) {
+    try {
+      const regContent = fs.readFileSync(registrationsFile, "utf8");
+      const firstLine = regContent.replace(/^\ufeff/, "").split(/\r?\n/)[0].toLowerCase();
+      if (firstLine.includes("wohnort")) {
+        const oldRows = parseCSV(regContent);
+        const newHeader = "vorname;name;geburtsdatum;startnummer;gender;club";
+        const newLines = oldRows.map(r => 
+          `${escapeCSVField(r.vorname || "")};${escapeCSVField(r.name || "")};${escapeCSVField(r.geburtsdatum || "")};${escapeCSVField(r.startnummer || "")};${escapeCSVField(r.gender || "M")};${r.club ? "true" : "false"}`
+        );
+        const migratedContent = "\ufeff" + [newHeader, ...newLines].join("\r\n") + "\r\n";
+        fs.writeFileSync(registrationsFile, migratedContent, "utf8");
+        console.log("Migrated registrations.csv to remove 'wohnort' column.");
+      }
+    } catch (migErr) {
+      console.error("Failed to migrate registrations.csv removing wohnort:", migErr);
+    }
+  }
 
   // Run migration of old races folder if present
   migrateOldRaces(dirPath);
@@ -642,7 +662,7 @@ function handleAutoZielDetection(epc: string) {
   if (fs.existsSync(regFile)) {
     try {
       const regContent = fs.readFileSync(regFile, "utf8");
-      const regs = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "wohnort", "gender", "club"]);
+      const regs = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "gender", "club"]);
       const athlete = regs.find((r: any) => String(r.startnummer) === String(bib));
       if (athlete) {
         vorname = athlete.vorname || "";
@@ -887,7 +907,7 @@ app.get("/api/registrations", (req, res) => {
     const regFile = getRegistrationsFile();
     if (!fs.existsSync(regFile)) return res.json([]);
     const content = fs.readFileSync(regFile, "utf8");
-    const data = parseCSV(content, ["vorname", "name", "geburtsdatum", "startnummer", "wohnort", "gender", "club"]);
+    const data = parseCSV(content, ["vorname", "name", "geburtsdatum", "startnummer", "gender", "club"]);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: "Failed to read registrations file." });
@@ -898,13 +918,13 @@ app.post("/api/registrations", (req, res) => {
   if (!activeConfig.isConfigured) {
     return res.status(400).json({ error: "App not configured yet." });
   }
-  const { vorname, name, geburtsdatum, startnummer, wohnort, gender, club } = req.body;
+  const { vorname, name, geburtsdatum, startnummer, gender, club } = req.body;
   if (!vorname || !name || !startnummer) {
     return res.status(400).json({ error: "Vorname, Name and Startnummer are required." });
   }
   try {
     const regFile = getRegistrationsFile();
-    const line = `${escapeCSVField(vorname)};${escapeCSVField(name)};${escapeCSVField(geburtsdatum || "")};${escapeCSVField(startnummer)};${escapeCSVField(wohnort || "")};${escapeCSVField(gender || "M")};${club ? "true" : "false"}\r\n`;
+    const line = `${escapeCSVField(vorname)};${escapeCSVField(name)};${escapeCSVField(geburtsdatum || "")};${escapeCSVField(startnummer)};${escapeCSVField(gender || "M")};${club ? "true" : "false"}\r\n`;
     fs.appendFileSync(regFile, line, "utf8");
     res.json({ success: true });
   } catch (err) {
@@ -1109,7 +1129,7 @@ app.post("/api/races/:raceName/event", (req, res) => {
     let geburtsdatum = "";
     if (fs.existsSync(regFile)) {
       const regContent = fs.readFileSync(regFile, "utf8");
-      const regs = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "wohnort", "gender", "club"]);
+      const regs = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "gender", "club"]);
       const athlete = regs.find((r: any) => String(r.startnummer) === String(startnummer));
       if (athlete) {
         vorname = athlete.vorname || "";
@@ -1147,7 +1167,7 @@ app.post("/api/races/:raceName/events-bulk", (req, res) => {
     let registrations: any[] = [];
     if (fs.existsSync(regFile)) {
       const regContent = fs.readFileSync(regFile, "utf8");
-      registrations = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "wohnort", "gender", "club"]);
+      registrations = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "gender", "club"]);
     }
 
     const now = Date.now();
@@ -1317,7 +1337,7 @@ app.post("/api/races/export-excel", async (req, res) => {
     let registrations: any[] = [];
     if (fs.existsSync(regFile)) {
       const regContent = fs.readFileSync(regFile, "utf8");
-      registrations = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "wohnort", "gender", "club"]);
+      registrations = parseCSV(regContent, ["vorname", "name", "geburtsdatum", "startnummer", "gender", "club"]);
     }
 
     // 2. Fetch Distances metadata
@@ -1394,7 +1414,6 @@ app.post("/api/races/export-excel", async (req, res) => {
           vorname: athlete ? athlete.vorname : `#${bib}`,
           gender: athlete ? athlete.gender : 'M',
           geburtsdatum: athlete ? String(athlete.geburtsdatum) : '1990',
-          wohnort: athlete ? athlete.wohnort : 'Extern',
           club: athlete ? athlete.club : false,
           elapsedMs,
           elapsedLabel: elapsedMs === Infinity ? "DNF" : formatElapsed(elapsedMs)
@@ -1477,7 +1496,6 @@ app.post("/api/races/export-excel", async (req, res) => {
         vorname: athlete ? athlete.vorname : `#${bib}`,
         gender: athlete ? athlete.gender : 'M',
         geburtsdatum: athlete ? String(athlete.geburtsdatum) : '1990',
-        wohnort: athlete ? athlete.wohnort : 'Extern',
         club: athlete ? athlete.club : false,
         raceTimes,
         totalMs,
@@ -1540,7 +1558,7 @@ app.post("/api/races/export-excel", async (req, res) => {
     };
 
     const headerStyles: any[] = [];
-    for (let col = 1; col <= 8; col++) {
+    for (let col = 1; col <= 7; col++) {
       const cell = r1Sheet.getCell(2, col);
       headerStyles.push({
         font: cell.font,
@@ -1551,7 +1569,7 @@ app.post("/api/races/export-excel", async (req, res) => {
     }
 
     const dataStyles: any[] = [];
-    for (let col = 1; col <= 8; col++) {
+    for (let col = 1; col <= 7; col++) {
       const cell = r1Sheet.getCell(3, col);
       dataStyles.push({
         font: cell.font,
@@ -1562,7 +1580,7 @@ app.post("/api/races/export-excel", async (req, res) => {
     }
 
     const r1ColWidths: number[] = [];
-    for (let col = 1; col <= 8; col++) {
+    for (let col = 1; col <= 7; col++) {
       r1ColWidths.push(r1Sheet.getColumn(col).width || 13);
     }
 
@@ -1581,7 +1599,7 @@ app.post("/api/races/export-excel", async (req, res) => {
     };
 
     const gwHeaderStyles: any[] = [];
-    for (let col = 1; col <= 8; col++) {
+    for (let col = 1; col <= 7; col++) {
       const cell = gwSheet.getCell(2, col);
       gwHeaderStyles.push({
         font: cell.font,
@@ -1592,7 +1610,7 @@ app.post("/api/races/export-excel", async (req, res) => {
     }
 
     const gwDataStyles: any[] = [];
-    for (let col = 1; col <= 8; col++) {
+    for (let col = 1; col <= 7; col++) {
       const cell = gwSheet.getCell(3, col);
       gwDataStyles.push({
         font: cell.font,
@@ -1603,7 +1621,7 @@ app.post("/api/races/export-excel", async (req, res) => {
     }
 
     const gwColWidths: number[] = [];
-    for (let col = 1; col <= 8; col++) {
+    for (let col = 1; col <= 7; col++) {
       gwColWidths.push(gwSheet.getColumn(col).width || 13);
     }
 
@@ -1627,40 +1645,45 @@ app.post("/api/races/export-excel", async (req, res) => {
       let currentRow = 1;
 
       activeCategories.forEach((cat) => {
-        // Merge category title row (A to G for first row to leave H for distance, otherwise A to H)
+        // Merge category title row (A to F for first row to leave G for distance, otherwise A to G)
         if (currentRow === 1) {
-          ws.mergeCells(1, 1, 1, 7);
+          ws.mergeCells(1, 1, 1, 6);
           const titleCell = ws.getCell(1, 1);
           titleCell.value = cat.name;
 
-          const distanceCell = ws.getCell(1, 8);
+          const distanceCell = ws.getCell(1, 7);
           const distMeters = raceDistances[raceName] || 0;
           distanceCell.value = distMeters > 0 ? `Distanz: ${formatDistance(distMeters)}` : "Distanz: -";
 
-          // Apply styling to columns 1-7
-          for (let col = 1; col <= 7; col++) {
+          // Apply styling to columns 1-6
+          for (let col = 1; col <= 6; col++) {
             applyCellStyles(ws.getCell(1, col), catTitleStyle);
+            ws.getCell(1, col).border = { ...ws.getCell(1, col).border, bottom: { style: 'thick' } };
           }
           // Apply styling and right alignment to distance cell
           applyCellStyles(distanceCell, catTitleStyle);
           distanceCell.alignment = { horizontal: "right", vertical: "middle" };
+          distanceCell.border = { ...distanceCell.border, bottom: { style: 'thick' } };
         } else {
-          ws.mergeCells(currentRow, 1, currentRow, 8);
+          ws.mergeCells(currentRow, 1, currentRow, 7);
           const titleCell = ws.getCell(currentRow, 1);
           titleCell.value = cat.name;
 
-          for (let col = 1; col <= 8; col++) {
+          for (let col = 1; col <= 7; col++) {
             applyCellStyles(ws.getCell(currentRow, col), catTitleStyle);
+            ws.getCell(currentRow, col).border = { ...ws.getCell(currentRow, col).border, bottom: { style: 'thick' } };
           }
         }
         ws.getRow(currentRow).height = 15.75;
         currentRow++;
 
-        const headers = ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort', 'Rennzeit', 'Rückstand', '⌀km/h'];
+        const headers = ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Rennzeit', 'Rückstand', '⌀km/h'];
         headers.forEach((h, colIdx) => {
           const cell = ws.getCell(currentRow, colIdx + 1);
           cell.value = h;
           applyCellStyles(cell, headerStyles[colIdx] || headerStyles[0]);
+          // Explicit thick bottom border
+          cell.border = { ...cell.border, bottom: { style: 'thick' } };
         });
         ws.getRow(currentRow).height = 16.5;
         currentRow++;
@@ -1679,7 +1702,6 @@ app.post("/api/races/export-excel", async (req, res) => {
               runner.vorname,
               runner.name,
               runner.geburtsdatum,
-              runner.wohnort,
               runner.elapsedLabel,
               runner.diffLabel,
               runner.speed === "-" ? "-" : Number(runner.speed)
@@ -1705,20 +1727,19 @@ app.post("/api/races/export-excel", async (req, res) => {
       { width: gwColWidths[0] }, // Rang
       { width: gwColWidths[1] }, // Vorname
       { width: gwColWidths[2] }, // Nachname
-      { width: gwColWidths[3] }, // Jahrgang
-      { width: gwColWidths[4] }  // Wohnort
+      { width: gwColWidths[3] }  // Jahrgang
     ];
     selectedRaces.forEach(() => {
-      columnsDef.push({ width: gwColWidths[5] }); // Zeit [Race Name]
+      columnsDef.push({ width: gwColWidths[4] }); // Zeit [Race Name]
     });
-    columnsDef.push({ width: gwColWidths[6] }); // Gesamtzeit
-    columnsDef.push({ width: gwColWidths[7] }); // Rückstand
+    columnsDef.push({ width: gwColWidths[5] }); // Gesamtzeit
+    columnsDef.push({ width: gwColWidths[6] }); // Rückstand
     wsGw.columns = columnsDef;
 
     let gwCurrentRow = 1;
 
     activeCategories.forEach((cat) => {
-      const totalCols = 5 + selectedRaces.length + 2;
+      const totalCols = 4 + selectedRaces.length + 2;
       wsGw.mergeCells(gwCurrentRow, 1, gwCurrentRow, totalCols);
       
       const titleCell = wsGw.getCell(gwCurrentRow, 1);
@@ -1726,11 +1747,12 @@ app.post("/api/races/export-excel", async (req, res) => {
 
       for (let col = 1; col <= totalCols; col++) {
         applyCellStyles(wsGw.getCell(gwCurrentRow, col), gwCatTitleStyle);
+        wsGw.getCell(gwCurrentRow, col).border = { ...wsGw.getCell(gwCurrentRow, col).border, bottom: { style: 'thick' } };
       }
       wsGw.getRow(gwCurrentRow).height = 15.75;
       gwCurrentRow++;
 
-      const headers = ['Rang', 'Vorname', 'Nachname', 'Jahrgang', 'Wohnort'];
+      const headers = ['Rang', 'Vorname', 'Nachname', 'Jahrgang'];
       selectedRaces.forEach(r => headers.push(`Zeit ${r}`));
       headers.push('Gesamtzeit', 'Rückstand');
 
@@ -1739,16 +1761,18 @@ app.post("/api/races/export-excel", async (req, res) => {
         cell.value = h;
         
         let styleTemplate;
-        if (colIdx < 5) {
+        if (colIdx < 4) {
           styleTemplate = gwHeaderStyles[colIdx];
-        } else if (colIdx < 5 + selectedRaces.length) {
-          styleTemplate = gwHeaderStyles[5]; // Zeit Rennen 1 style
-        } else if (colIdx === 5 + selectedRaces.length) {
-          styleTemplate = gwHeaderStyles[6]; // Gesamtzeit style
+        } else if (colIdx < 4 + selectedRaces.length) {
+          styleTemplate = gwHeaderStyles[4]; // Zeit Rennen 1 style
+        } else if (colIdx === 4 + selectedRaces.length) {
+          styleTemplate = gwHeaderStyles[5]; // Gesamtzeit style
         } else {
-          styleTemplate = gwHeaderStyles[7]; // Rückstand style
+          styleTemplate = gwHeaderStyles[6]; // Rückstand style
         }
         applyCellStyles(cell, styleTemplate || gwHeaderStyles[0]);
+        // Explicit thick bottom border
+        cell.border = { ...cell.border, bottom: { style: 'thick' } };
       });
       wsGw.getRow(gwCurrentRow).height = 16.5;
       gwCurrentRow++;
@@ -1766,8 +1790,7 @@ app.post("/api/races/export-excel", async (req, res) => {
             runner.pos || "-",
             runner.vorname,
             runner.name,
-            runner.geburtsdatum,
-            runner.wohnort
+            runner.geburtsdatum
           ];
           runner.raceTimes.forEach(rt => {
             rowData.push(rt.elapsedLabel);
@@ -1780,14 +1803,14 @@ app.post("/api/races/export-excel", async (req, res) => {
             cell.value = val;
             
             let styleTemplate;
-            if (colIdx < 5) {
+            if (colIdx < 4) {
               styleTemplate = gwDataStyles[colIdx];
-            } else if (colIdx < 5 + selectedRaces.length) {
+            } else if (colIdx < 4 + selectedRaces.length) {
+              styleTemplate = gwDataStyles[4];
+            } else if (colIdx === 4 + selectedRaces.length) {
               styleTemplate = gwDataStyles[5];
-            } else if (colIdx === 5 + selectedRaces.length) {
-              styleTemplate = gwDataStyles[6];
             } else {
-              styleTemplate = gwDataStyles[7];
+              styleTemplate = gwDataStyles[6];
             }
             applyCellStyles(cell, styleTemplate || gwDataStyles[0]);
           });

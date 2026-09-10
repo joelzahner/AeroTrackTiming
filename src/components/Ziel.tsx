@@ -170,7 +170,6 @@ export default function Ziel({
         vorname: athlete ? athlete.vorname : `#${bib}`,
         gender: athlete ? (athlete.gender as 'M' | 'W') : 'M',
         geburtsdatum: athlete ? athlete.geburtsdatum : '1990',
-        wohnort: athlete ? athlete.wohnort : 'Extern',
         club: athlete ? athlete.club : false,
         startTime: startEvt ? startEvt.timestamp : undefined,
         startMs: startEvt ? Number(startEvt.exactMs) : undefined,
@@ -461,7 +460,7 @@ export default function Ziel({
                       </div>
                       <div className="flex flex-col">
                         <span className="font-sans text-xs font-bold text-black">{stand.name}, {stand.vorname}</span>
-                        <span className="font-mono text-[10px] text-[#585f6c]">{stand.wohnort}</span>
+                        <span className="font-mono text-[10px] text-[#585f6c]">JG {stand.geburtsdatum}</span>
                       </div>
                     </div>
                     <div className="flex flex-col items-end text-right">

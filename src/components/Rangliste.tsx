@@ -17,7 +17,6 @@ interface OverallFinisherResult {
   vorname: string;
   gender: 'M' | 'W';
   geburtsdatum: string;
-  wohnort: string;
   club: boolean;
   raceTimes: Array<{ raceName: string; elapsedLabel: string; elapsedMs: number }>;
   totalMs: number;
@@ -291,7 +290,6 @@ export default function Rangliste({
         vorname: athlete ? athlete.vorname : `#${bib}`,
         gender: athlete ? athlete.gender : 'M',
         geburtsdatum: athlete ? athlete.geburtsdatum : '1990',
-        wohnort: athlete ? athlete.wohnort : 'Extern',
         club: athlete ? athlete.club : false,
         elapsedMs,
         elapsedLabel: elapsedMs === Infinity ? "DNF" : formatElapsed(elapsedMs),
@@ -388,7 +386,6 @@ export default function Rangliste({
         vorname: athlete ? athlete.vorname : `#${bib}`,
         gender: athlete ? athlete.gender : 'M',
         geburtsdatum: athlete ? athlete.geburtsdatum : '1990',
-        wohnort: athlete ? athlete.wohnort : 'Extern',
         club: athlete ? athlete.club : false,
         raceTimes,
         totalMs,
@@ -757,7 +754,7 @@ export default function Rangliste({
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-bold text-black">{stand.name}, {stand.vorname}</div>
-                        <div className="font-mono text-[10px] text-[#585f6c] mt-1">{stand.wohnort} • JG {birthYear}</div>
+                        <div className="font-mono text-[10px] text-[#585f6c] mt-1">JG {birthYear}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 py-1 inline-flex text-[10px] leading-4 font-semibold rounded bg-neutral-100 text-black border border-[#cfc4c5]">
@@ -848,7 +845,7 @@ export default function Rangliste({
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-bold text-black">{stand.name}, {stand.vorname}</div>
-                        <div className="font-mono text-[10px] text-[#585f6c] mt-1">{stand.wohnort} • JG {birthYear}</div>
+                        <div className="font-mono text-[10px] text-[#585f6c] mt-1">JG {birthYear}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 py-1 inline-flex text-[10px] leading-4 font-semibold rounded bg-neutral-100 text-black border border-[#cfc4c5]">

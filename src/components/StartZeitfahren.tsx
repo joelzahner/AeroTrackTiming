@@ -232,8 +232,8 @@ export default function StartZeitfahren({
                 <div id="TT-starter-name" className="font-sans text-3xl font-black text-black mt-4">
                   {currentAthlete ? `${currentAthlete.vorname} ${currentAthlete.name}` : 'Unregistrierte Nummer'}
                 </div>
-                <div id="TT-starter-city" className="font-mono text-xs text-[#585f6c] mt-2 uppercase tracking-widest">
-                  {currentAthlete ? `${currentAthlete.wohnort}` : 'Keine Anmeldung'}
+                <div id="TT-starter-info" className="font-mono text-xs text-[#585f6c] mt-2 uppercase tracking-widest">
+                  {currentAthlete ? (currentAthlete.geburtsdatum ? `JG ${currentAthlete.geburtsdatum}` : 'Registriert') : 'Keine Anmeldung'}
                 </div>
               </>
             ) : (

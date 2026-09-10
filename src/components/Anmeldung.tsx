@@ -12,7 +12,6 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
   const [name, setName] = useState('');
   const [startnummer, setStartnummer] = useState('');
   const [geburtsdatum, setGeburtsdatum] = useState('');
-  const [wohnort, setWohnort] = useState('');
   const [gender, setGender] = useState<'M' | 'W'>('W');
   const [club, setClub] = useState(false);
   const [search, setSearch] = useState('');
@@ -37,7 +36,6 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
       name: name.trim(),
       geburtsdatum: geburtsdatum || '1990',
       startnummer: startnummer.trim(),
-      wohnort: wohnort.trim() || 'Unbekannt',
       gender,
       club
     };
@@ -49,7 +47,6 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
     setName('');
     setStartnummer('');
     setGeburtsdatum('');
-    setWohnort('');
     setGender('W');
     setClub(false);
   };
@@ -63,8 +60,8 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
       return str;
     };
 
-    const csvContent = "vorname;name;geburtsdatum;startnummer;wohnort;gender;club\r\n" + 
-      registrations.map(r => `${escapeCSVField(r.vorname)};${escapeCSVField(r.name)};${escapeCSVField(r.geburtsdatum)};${escapeCSVField(r.startnummer)};${escapeCSVField(r.wohnort)};${escapeCSVField(r.gender)};${escapeCSVField(r.club)}`).join("\r\n");
+    const csvContent = "vorname;name;geburtsdatum;startnummer;gender;club\r\n" + 
+      registrations.map(r => `${escapeCSVField(r.vorname)};${escapeCSVField(r.name)};${escapeCSVField(r.geburtsdatum)};${escapeCSVField(r.startnummer)};${escapeCSVField(r.gender)};${escapeCSVField(r.club)}`).join("\r\n");
     
     const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
@@ -79,8 +76,7 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
     return (
       (r.vorname || '').toLowerCase().includes(s) ||
       (r.name || '').toLowerCase().includes(s) ||
-      (r.startnummer || '').toLowerCase().includes(s) ||
-      (r.wohnort || '').toLowerCase().includes(s)
+      (r.startnummer || '').toLowerCase().includes(s)
     );
   });
 
@@ -164,17 +160,6 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
                     className="bg-transparent border-b border-[#7e7576] font-mono text-xs py-1 focus:border-black outline-none text-black"
                   />
                 </div>
-              </div>
-
-              <div className="flex flex-col">
-                <label className="font-sans text-[11px] font-bold text-[#5c5c5c] mb-1">Wohnort</label>
-                <input
-                  type="text"
-                  value={wohnort}
-                  onChange={(e) => setWohnort(e.target.value)}
-                  placeholder="Zürich"
-                  className="bg-transparent border-b border-[#7e7576] font-sans text-sm py-1 focus:border-black outline-none"
-                />
               </div>
 
               <div className="flex flex-col pt-2">
@@ -277,7 +262,6 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
                     <th className="py-3 px-6 font-mono text-xs text-[#585f6c] w-20">St.-Nr.</th>
                     <th className="py-3 px-6 font-mono text-xs text-[#585f6c]">Name</th>
                     <th className="py-3 px-6 font-mono text-xs text-[#585f6c] w-24">Jahrgang</th>
-                    <th className="py-3 px-6 font-mono text-xs text-[#585f6c]">Wohnort</th>
                     <th className="py-3 px-6 font-mono text-xs text-[#585f6c] w-16">M/W</th>
                     <th className="py-3 px-6 font-mono text-xs text-[#585f6c] text-right w-24">Club</th>
                   </tr>
@@ -285,7 +269,7 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
                 <tbody className="font-sans text-sm">
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center font-mono text-xs text-[#585f6c]">
+                      <td colSpan={5} className="p-8 text-center font-mono text-xs text-[#585f6c]">
                         Keine Registrierungen gefunden. Füllen Sie das Anmeldeformular links aus.
                       </td>
                     </tr>
@@ -300,7 +284,6 @@ export default function Anmeldung({ registrations, onAddRegistration, onRefresh 
                         <td className="py-3 px-6 font-mono font-bold text-black">{r.startnummer}</td>
                         <td className="py-3 px-6 text-black font-medium">{r.name}, {r.vorname}</td>
                         <td className="py-3 px-6 font-mono text-xs text-[#585f6c]">{r.geburtsdatum}</td>
-                        <td className="py-3 px-6 text-black">{r.wohnort}</td>
                         <td className="py-3 px-6 font-mono text-xs text-[#585f6c]">{r.gender}</td>
                         <td className="py-3 px-6 text-right">
                           {r.club ? (

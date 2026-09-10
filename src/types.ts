@@ -10,7 +10,6 @@ export interface Registration {
   name: string;
   geburtsdatum: string; // YYYY-MM-DD
   startnummer: string;
-  wohnort: string;
   gender: 'M' | 'W';
   club: boolean;
 }
@@ -33,7 +32,6 @@ export interface FinisherResult {
   vorname: string;
   gender: 'M' | 'W';
   geburtsdatum: string;
-  wohnort: string;
   club: boolean;
   startTime?: string;
   startMs?: number;

@@ -12,7 +12,7 @@ AeroTrackTiming ist eine spezialisierte Offline-Desktop-Anwendung für die Zeitm
 * **Automatische Daten-Migration:** Das System migriert veraltete Single-CSV-Strukturen automatisch in das moderne, ordnerbasierte Renn-Archiv.
 
 ### 2. 📝 Anmeldung (Registrierung)
-* Manuelle Registrierung von Athleten (Vorname, Nachname, Jahrgang, Startnummer, Wohnort, Geschlecht, Vereinsstatus).
+* Manuelle Registrierung von Athleten (Vorname, Nachname, Jahrgang, Startnummer, Geschlecht, Vereinsstatus).
 * Massenimport und -export von Anmeldungslisten als CSV.
 * Automatische Validierung auf doppelte Startnummern.
 
@@ -79,7 +79,7 @@ AeroTrackTiming-Datenordner/
 
 ### CSV-Schemas
 
-* **registrations.csv:** `vorname;name;geburtsdatum;startnummer;wohnort;gender;club`
+* **registrations.csv:** `vorname;name;geburtsdatum;startnummer;gender;club`
   * *Hinweis: `geburtsdatum` speichert den Jahrgang (z.B. `1995`)*
 * **tags.csv:** `startnummer;epc;timestamp;status`
 * **startzeiten.csv / zielzeiten.csv:** `startnummer;vorname;nachname;jahrgang;startzeit;exactMs`

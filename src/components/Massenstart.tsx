@@ -328,7 +328,7 @@ export default function Massenstart({
                         {isRegistered ? (
                           <>
                             <span className="material-symbols-outlined text-sm text-green-500">check_circle</span>
-                            <span className="font-mono text-[10px] text-green-700">Validiert ({athlete.wohnort})</span>
+                            <span className="font-mono text-[10px] text-green-700">Validiert</span>
                           </>
                         ) : (
                           <>
