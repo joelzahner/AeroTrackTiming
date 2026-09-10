@@ -1,7 +1,7 @@
 {
   "name": "aerotracktiming",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Offline-Desktop-App für UHF RFID Zeitmessung",
   "author": "Joel Zahner",
   "main": "electron.cjs",
