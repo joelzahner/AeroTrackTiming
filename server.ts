@@ -365,11 +365,14 @@ interface RfidState {
   antennaIndex: number;
   powerDbm: number;
   statusMessages: string[];
-  // Buffer of unread tags (consumed by polling)
+  // Buffer of unread tags (consumed by polling) - max 200 entries, FIFO
   tagBuffer: Array<{ epc: string; pc: string; crc: string; timestamp: string }>;
   // For Ziel monitoring
   monitoring: boolean;
   monitorRace: string;
+  // In-memory set to prevent race conditions in duplicate detection
+  // Key: "raceName:bib"
+  finishedBibsInMemory: Set<string>;
 }
 
 const rfidState: RfidState = {
@@ -389,6 +392,7 @@ const rfidState: RfidState = {
   tagBuffer: [],
   monitoring: false,
   monitorRace: "",
+  finishedBibsInMemory: new Set<string>(),
 };
 
 function getBridgeExePath(): string {
@@ -439,8 +443,10 @@ function startBridge(comPort: string, baudRate: number, antennaIndex: number, po
     let lineBuffer = "";
 
     child.stdout?.on("data", (data: Buffer) => {
-      lineBuffer += data.toString("utf8");
+      // Normalize Windows \r\n to \n before splitting to avoid empty-line artifacts
+      lineBuffer += data.toString("utf8").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
       const lines = lineBuffer.split("\n");
+      // Keep the last (possibly incomplete) line in the buffer
       lineBuffer = lines.pop() || "";
       
       for (const line of lines) {
@@ -448,23 +454,25 @@ function startBridge(comPort: string, baudRate: number, antennaIndex: number, po
         if (!trimmed) continue;
         
         // Suche nach Tags: z.B. "EPC=3000E280110C20000B020B02  RSSI=115"
-        const tagMatch = trimmed.match(/EPC=([0-9A-F]+)\s+RSSI=(-?\d+)/i);
+        const tagMatch = trimmed.match(/EPC=([0-9A-Fa-f]+)\s+RSSI=(-?\d+)/i);
         if (tagMatch) {
-          rfidState.lastEpc = tagMatch[1];
+          rfidState.lastEpc = tagMatch[1].toUpperCase();
           rfidState.lastPc = "";
           rfidState.lastCrc = "";
           rfidState.lastTimestamp = new Date().toISOString();
           rfidState.lastRssi = parseInt(tagMatch[2], 10);
           
+          // FIFO queue: drop oldest entry if buffer is full (max 200)
+          // This prevents silent data loss from bulk-slice
+          if (rfidState.tagBuffer.length >= 200) {
+            rfidState.tagBuffer.shift(); // drop oldest, keep newest
+          }
           rfidState.tagBuffer.push({
             epc: rfidState.lastEpc,
             pc: rfidState.lastPc,
             crc: rfidState.lastCrc,
             timestamp: rfidState.lastTimestamp,
           });
-          if (rfidState.tagBuffer.length > 100) {
-            rfidState.tagBuffer = rfidState.tagBuffer.slice(-50);
-          }
           if (rfidState.monitoring && rfidState.monitorRace) {
             handleAutoZielDetection(rfidState.lastEpc);
           }
@@ -547,12 +555,25 @@ function handleAutoZielDetection(epc: string) {
 
   const bib = matchingTag.startnummer;
   const raceName = rfidState.monitorRace;
+
+  // Fast in-memory duplicate check (prevents race conditions when the same tag
+  // is read multiple times before the CSV write completes)
+  const memKey = `${raceName}:${bib}`;
+  if (rfidState.finishedBibsInMemory.has(memKey)) return;
+
+  // Mark as finished in memory BEFORE writing to disk
+  rfidState.finishedBibsInMemory.add(memKey);
+
   const raceDir = path.join(getDataDir(), raceName);
   const filePath = path.join(raceDir, "zielzeiten.csv");
   
-  if (!fs.existsSync(filePath)) return;
+  if (!fs.existsSync(filePath)) {
+    // Remove from in-memory set if file doesn't exist (race not started properly)
+    rfidState.finishedBibsInMemory.delete(memKey);
+    return;
+  }
 
-  // Duplicate check: only one ZIEL per bib per race
+  // Secondary disk-based duplicate check (for app restarts)
   const raceContent = fs.readFileSync(filePath, "utf8");
   const raceEvents = parseCSV(raceContent, ["startnummer", "vorname", "nachname", "jahrgang", "zielzeit", "exactMs"]);
   const alreadyFinished = raceEvents.some(
@@ -741,12 +762,35 @@ app.post("/api/rfid/start-monitoring", (req, res) => {
   }
   rfidState.monitoring = true;
   rfidState.monitorRace = raceName;
+
+  // Pre-load already-finished bibs into memory so we never double-detect
+  // after an app restart or race switch
+  rfidState.finishedBibsInMemory.clear();
+  try {
+    if (activeConfig.isConfigured) {
+      const filePath = path.join(getDataDir(), raceName, "zielzeiten.csv");
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, "utf8");
+        const events = parseCSV(content, ["startnummer", "vorname", "nachname", "jahrgang", "zielzeit", "exactMs"]);
+        for (const e of events) {
+          if (e.startnummer) {
+            rfidState.finishedBibsInMemory.add(`${raceName}:${e.startnummer}`);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Failed to pre-load finished bibs:", err);
+  }
+
   res.json({ success: true, monitoring: true, raceName });
 });
 
 app.post("/api/rfid/stop-monitoring", (req, res) => {
   rfidState.monitoring = false;
   rfidState.monitorRace = "";
+  // Clear in-memory finished bibs set when monitoring stops
+  rfidState.finishedBibsInMemory.clear();
   res.json({ success: true, monitoring: false });
 });
 

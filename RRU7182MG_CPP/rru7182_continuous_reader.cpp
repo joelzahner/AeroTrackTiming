@@ -172,6 +172,7 @@ static bool configureReader(const ReaderApi &api, int comPort, BYTE baud, int &f
 
 static void printTagLine(const std::string &tag, int rssi) {
     std::cout << "EPC=" << tag << "  RSSI=" << rssi << "\n";
+    std::cout.flush();
 }
 
 static bool isInventorySuccessCode(int ret) {
@@ -186,7 +187,7 @@ static bool isInventorySuccessCode(int ret) {
     }
 }
 
-static bool readOnce(const ReaderApi &api, BYTE comAddr, int frmHandle, std::vector<std::string> &tags, BYTE inAnt) {
+static bool readOnce(const ReaderApi &api, BYTE comAddr, int frmHandle, std::vector<std::string> &tags) {
     BYTE epcList[4096] = {0};
     BYTE ant = 0;
     int totalLen = 0;
@@ -197,7 +198,7 @@ static bool readOnce(const ReaderApi &api, BYTE comAddr, int frmHandle, std::vec
 
     int ret = api.Inventory_G2(
         &comAddr,
-        3, // QValue (optimiert für 1-4 gleichzeitige Tags an der Ziellinie)
+        4, // QValue
         0, // Session
         0, // MaskMem
         maskAdr,
@@ -208,8 +209,8 @@ static bool readOnce(const ReaderApi &api, BYTE comAddr, int frmHandle, std::vec
         0, // LenTID
         0, // TIDFlag
         0, // Target
-        inAnt, // ausgewaehlte Antenne
-        10, // ScanTime (kurze Scanzeit für maximale Abfragefrequenz)
+        0x80, // erste Antenne
+        20, // ScanTime
         0, // FastFlag
         epcList,
         &ant,
@@ -305,26 +306,22 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    std::cout << "Kontinuierliches Hochgeschwindigkeits-Lesen gestartet (Antennen 1 & 2).\n\n";
+    std::cout << "Kontinuierliches Lesen gestartet. Zum Beenden ESC oder Ctrl+C druecken.\n\n";
 
-    BYTE currentAnt = 0x80; // Start mit Antenne 1
     while (true) {
         std::vector<std::string> readTags;
-        bool gotTag = readOnce(api, comAddr, frmHandle, readTags, currentAnt);
+        bool gotTag = readOnce(api, comAddr, frmHandle, readTags);
 
-        // Wechsle zwischen Antenne 1 (0x80) und Antenne 2 (0x81)
-        if (currentAnt == 0x80) {
-            currentAnt = 0x81;
-        } else {
-            currentAnt = 0x80;
+        if (!gotTag) {
+            std::cout << ".";
+            std::cout.flush();
         }
 
         if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
             break;
         }
 
-        // Minimales Sleep für maximale Sampling-Rate (ca. 40-50 Scans/Sekunde)
-        Sleep(2);
+        Sleep(150);
     }
 
     api.CloseSpecComPort(frmHandle);
